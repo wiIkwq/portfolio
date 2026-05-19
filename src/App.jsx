@@ -5,7 +5,7 @@ import {
   ContactShadows,
   Text,
 } from '@react-three/drei'
-import { Bloom, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
+import { Bloom, DepthOfField, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
 import {
   Box,
   Braces,
@@ -138,6 +138,106 @@ const keys = {
   ShiftLeft: 'sprint',
 }
 
+const DAY_LENGTH_SECONDS = 300
+const START_PHASE = 0.68
+const PLAYER_RADIUS = 0.48
+const WORLD_LIMITS = {
+  minX: -21.8,
+  maxX: 21.8,
+  minZ: -33.5,
+  maxZ: 27,
+}
+
+const COLLISION_CIRCLES = [
+  { x: 0, z: 7.8, radius: 2.65 },
+  { x: 8.9, z: -13.2, radius: 3.2 },
+  { x: -7.7, z: 15.6, radius: 1.7 },
+  { x: 0, z: -17.2, radius: 2.1 },
+  ...exhibits.map((exhibit) => ({
+    x: exhibit.position[0],
+    z: exhibit.position[2],
+    radius: exhibit.id === 'integro' ? 1.75 : 1.35,
+  })),
+]
+
+const cycleColors = {
+  dayTop: new THREE.Color('#63b7e5'),
+  dayMid: new THREE.Color('#8bd8ee'),
+  dayHorizon: new THREE.Color('#ffe0a1'),
+  sunsetTop: new THREE.Color('#5c76bd'),
+  sunsetMid: new THREE.Color('#ef8e62'),
+  sunsetHorizon: new THREE.Color('#ffe2a0'),
+  nightTop: new THREE.Color('#071326'),
+  nightMid: new THREE.Color('#172447'),
+  nightHorizon: new THREE.Color('#49324a'),
+  fogDay: new THREE.Color('#8ed1b6'),
+  fogSunset: new THREE.Color('#e99a74'),
+  fogNight: new THREE.Color('#16223b'),
+  warmLight: new THREE.Color('#ffb46f'),
+  daySun: new THREE.Color('#fff3c0'),
+  moonLight: new THREE.Color('#98b9ff'),
+}
+
+function clamp01(value) {
+  return THREE.MathUtils.clamp(value, 0, 1)
+}
+
+function smoothstep(edge0, edge1, value) {
+  const t = clamp01((value - edge0) / (edge1 - edge0))
+  return t * t * (3 - 2 * t)
+}
+
+function getCycleState(elapsedTime) {
+  const phase = (elapsedTime / DAY_LENGTH_SECONDS + START_PHASE) % 1
+  const hour = phase * 24
+  const sunAngle = phase * Math.PI * 2 - Math.PI / 2
+  const sunX = Math.cos(sunAngle)
+  const sunY = Math.sin(sunAngle)
+  const sunZ = -0.72 + Math.sin(sunAngle * 0.72) * 0.28
+  const dayAmount = smoothstep(-0.08, 0.18, sunY)
+  const nightAmount = 1 - smoothstep(-0.16, 0.18, sunY)
+  const goldenAmount = clamp01(1 - Math.abs(sunY - 0.04) / 0.28) * (1 - nightAmount * 0.45)
+  const lampAmount = 1 - smoothstep(-0.12, 0.24, sunY)
+
+  return {
+    phase,
+    hour,
+    sunX,
+    sunY,
+    sunZ,
+    moonX: -sunX,
+    moonY: -sunY,
+    moonZ: -sunZ,
+    dayAmount,
+    nightAmount,
+    goldenAmount,
+    lampAmount,
+    exposure: 0.74 + dayAmount * 0.36 + goldenAmount * 0.08,
+    blurAmount: nightAmount * 0.34 + goldenAmount * 0.1,
+  }
+}
+
+function resolvePlayerCollision(position) {
+  position.x = THREE.MathUtils.clamp(position.x, WORLD_LIMITS.minX, WORLD_LIMITS.maxX)
+  position.z = THREE.MathUtils.clamp(position.z, WORLD_LIMITS.minZ, WORLD_LIMITS.maxZ)
+
+  COLLISION_CIRCLES.forEach(({ x, z, radius }) => {
+    const dx = position.x - x
+    const dz = position.z - z
+    const distance = Math.hypot(dx, dz)
+    const minDistance = radius + PLAYER_RADIUS
+
+    if (distance > 0.001 && distance < minDistance) {
+      const push = minDistance - distance
+      position.x += (dx / distance) * push
+      position.z += (dz / distance) * push
+    }
+  })
+
+  position.x = THREE.MathUtils.clamp(position.x, WORLD_LIMITS.minX, WORLD_LIMITS.maxX)
+  position.z = THREE.MathUtils.clamp(position.z, WORLD_LIMITS.minZ, WORLD_LIMITS.maxZ)
+}
+
 function App() {
   const [isLocked, setIsLocked] = useState(false)
   const [focusedId, setFocusedId] = useState(null)
@@ -207,7 +307,7 @@ function App() {
         performance={{ min: 0.72 }}
         onCreated={({ gl }) => {
           gl.shadowMap.enabled = true
-          gl.shadowMap.type = THREE.PCFSoftShadowMap
+          gl.shadowMap.type = THREE.PCFShadowMap
           gl.toneMapping = THREE.ACESFilmicToneMapping
           gl.toneMappingExposure = 1.06
         }}
@@ -237,8 +337,8 @@ function App() {
               <h1>Portfolio Prototype</h1>
               <div className="status-readout" aria-hidden="true">
                 <span>STATUS</span>
-                <strong>EXPLORATION</strong>
-                <small>ALLEY BUILD 0.2</small>
+                <strong>DAY CYCLE</strong>
+                <small>24H / 5MIN LOOP</small>
               </div>
             </div>
             <nav aria-label="Museum shortcuts">
@@ -345,26 +445,7 @@ function MuseumScene({ setFocusedId, openExhibit }) {
       <fog attach="fog" args={[palette.fog, 18, 74]} />
 
       <SunsetSky />
-
-      <ambientLight intensity={0.28} color="#ffe6be" />
-      <hemisphereLight args={['#ffd8ac', '#176048', 1.18]} />
-      <directionalLight
-        position={[-12, 8.5, -10]}
-        intensity={4.7}
-        color="#ffba74"
-        castShadow
-        shadow-mapSize={2048}
-        shadow-bias={-0.00022}
-        shadow-normalBias={0.035}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
-      />
-      <directionalLight position={[8, 6, 10]} intensity={0.9} color="#6fbaff" />
-      <pointLight position={[0, 4.4, -13]} color="#ffe2a0" intensity={4.2} distance={16} />
-      <pointLight position={[-5.8, 2.6, 2.6]} color="#e4ffc2" intensity={1.9} distance={8} />
-      <pointLight position={[6.4, 2.6, 5.5]} color="#ffc7a8" intensity={1.8} distance={8} />
+      <WorldLighting />
 
       <PlayerRig setFocusedId={setFocusedId} openExhibit={openExhibit} />
 
@@ -386,6 +467,7 @@ function MuseumScene({ setFocusedId, openExhibit }) {
       />
 
       <EffectComposer multisampling={0} resolutionScale={0.72}>
+        <DepthOfField focusDistance={0.025} focalLength={0.026} bokehScale={0.85} height={360} />
         <Bloom intensity={0.28} luminanceThreshold={0.82} luminanceSmoothing={0.42} mipmapBlur />
         <Noise opacity={0.035} />
         <Vignette eskil={false} offset={0.18} darkness={0.42} />
@@ -395,15 +477,115 @@ function MuseumScene({ setFocusedId, openExhibit }) {
   )
 }
 
+function WorldLighting() {
+  const { gl, scene } = useThree()
+  const ambientRef = useRef()
+  const hemiRef = useRef()
+  const sunRef = useRef()
+  const moonRef = useRef()
+  const fillRef = useRef()
+  const hubRef = useRef()
+  const soundRef = useRef()
+  const videoRef = useRef()
+  const lastCssUpdate = useRef(0)
+  const fogColor = useMemo(() => new THREE.Color(), [])
+  const sunColor = useMemo(() => new THREE.Color(), [])
+
+  useFrame(({ clock }) => {
+    if (
+      !sunRef.current ||
+      !moonRef.current ||
+      !ambientRef.current ||
+      !hemiRef.current ||
+      !fillRef.current ||
+      !hubRef.current ||
+      !soundRef.current ||
+      !videoRef.current
+    ) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    const sunHeight = Math.max(cycle.sunY, -0.18)
+    const sunIntensity = cycle.dayAmount * 3.25 + cycle.goldenAmount * 2.2
+    const moonIntensity = cycle.nightAmount * 1.15
+
+    sunRef.current.position.set(cycle.sunX * 34, sunHeight * 34 + 3, cycle.sunZ * 34)
+    sunRef.current.intensity = sunIntensity
+    sunColor.copy(cycleColors.warmLight).lerp(cycleColors.daySun, cycle.dayAmount * 0.45)
+    sunRef.current.color.copy(sunColor)
+
+    moonRef.current.position.set(cycle.moonX * 25, Math.max(cycle.moonY, 0.12) * 25 + 5, cycle.moonZ * 25)
+    moonRef.current.intensity = moonIntensity
+
+    ambientRef.current.intensity = 0.14 + cycle.dayAmount * 0.34 + cycle.goldenAmount * 0.08
+    hemiRef.current.intensity = 0.28 + cycle.dayAmount * 0.92 + cycle.nightAmount * 0.28
+    fillRef.current.intensity = 0.22 + cycle.nightAmount * 0.42
+
+    hubRef.current.intensity = 1.1 + cycle.lampAmount * 2.4 + cycle.goldenAmount * 0.7
+    soundRef.current.intensity = 0.35 + cycle.lampAmount * 1.65
+    videoRef.current.intensity = 0.35 + cycle.lampAmount * 1.55
+
+    fogColor.copy(cycleColors.fogNight).lerp(cycleColors.fogDay, cycle.dayAmount)
+    fogColor.lerp(cycleColors.fogSunset, cycle.goldenAmount * 0.62)
+    scene.fog.color.copy(fogColor)
+    scene.fog.near = 17 - cycle.nightAmount * 4
+    scene.fog.far = 78 - cycle.nightAmount * 10
+    gl.toneMappingExposure = cycle.exposure
+
+    if (clock.elapsedTime - lastCssUpdate.current > 0.18) {
+      document.documentElement.style.setProperty('--world-night', cycle.nightAmount.toFixed(3))
+      document.documentElement.style.setProperty('--world-sunset', cycle.goldenAmount.toFixed(3))
+      document.documentElement.style.setProperty('--world-blur', cycle.blurAmount.toFixed(3))
+      lastCssUpdate.current = clock.elapsedTime
+    }
+  })
+
+  return (
+    <>
+      <ambientLight ref={ambientRef} intensity={0.28} color="#ffe6be" />
+      <hemisphereLight ref={hemiRef} args={['#ffd8ac', '#176048', 1.18]} />
+      <directionalLight
+        ref={sunRef}
+        position={[-12, 8.5, -10]}
+        intensity={4.7}
+        color="#ffba74"
+        castShadow
+        shadow-mapSize={2048}
+        shadow-bias={-0.00022}
+        shadow-normalBias={0.035}
+        shadow-camera-left={-34}
+        shadow-camera-right={34}
+        shadow-camera-top={34}
+        shadow-camera-bottom={-34}
+      />
+      <directionalLight ref={moonRef} position={[10, 12, 8]} intensity={0.35} color={cycleColors.moonLight} />
+      <directionalLight ref={fillRef} position={[8, 6, 10]} intensity={0.9} color="#6fbaff" />
+      <pointLight ref={hubRef} position={[0, 4.4, -13]} color="#ffe2a0" intensity={4.2} distance={17} />
+      <pointLight ref={soundRef} position={[-5.8, 2.6, 2.6]} color="#e4ffc2" intensity={1.9} distance={9} />
+      <pointLight ref={videoRef} position={[6.4, 2.6, 5.5]} color="#ffc7a8" intensity={1.8} distance={9} />
+    </>
+  )
+}
+
 function SunsetSky() {
+  const { camera } = useThree()
+  const sunRef = useRef()
+  const sunGlowRef = useRef()
+  const moonRef = useRef()
+  const sunMaterialRef = useRef()
+  const sunGlowMaterialRef = useRef()
+  const moonMaterialRef = useRef()
+  const topColor = useMemo(() => new THREE.Color(), [])
+  const midColor = useMemo(() => new THREE.Color(), [])
+  const horizonColor = useMemo(() => new THREE.Color(), [])
   const skyMaterial = useMemo(
     () => ({
       uniforms: {
         topColor: { value: new THREE.Color(palette.skyTop) },
         midColor: { value: new THREE.Color(palette.skyMid) },
         horizonColor: { value: new THREE.Color(palette.skyHorizon) },
-        groundColor: { value: new THREE.Color('#d98568') },
+        groundColor: { value: new THREE.Color('#2f6d58') },
         sunDirection: { value: new THREE.Vector3(-0.55, 0.16, -0.82).normalize() },
+        moonAmount: { value: 0 },
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -420,6 +602,7 @@ function SunsetSky() {
         uniform vec3 horizonColor;
         uniform vec3 groundColor;
         uniform vec3 sunDirection;
+        uniform float moonAmount;
         varying vec3 vWorldPosition;
 
         void main() {
@@ -434,6 +617,9 @@ function SunsetSky() {
           float halo = pow(max(dot(direction, sunDirection), 0.0), 18.0);
           sky += vec3(1.0, 0.48, 0.18) * halo * 0.34;
           sky += vec3(1.0, 0.82, 0.48) * sun * 1.2;
+          float stars = step(0.997, fract(sin(dot(direction.xz * 620.0, vec2(12.9898, 78.233))) * 43758.5453));
+          stars *= smoothstep(0.22, 0.88, direction.y) * moonAmount * 0.55;
+          sky += vec3(0.75, 0.86, 1.0) * stars;
 
           gl_FragColor = vec4(sky, 1.0);
         }
@@ -441,6 +627,40 @@ function SunsetSky() {
     }),
     [],
   )
+
+  useFrame(({ clock }) => {
+    if (!sunRef.current || !sunMaterialRef.current || !sunGlowRef.current || !moonRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    const material = sunMaterialRef.current
+    const glowMaterial = sunGlowMaterialRef.current
+    const moonMaterial = moonMaterialRef.current
+    const uniforms = skyMaterial.uniforms
+
+    topColor.copy(cycleColors.nightTop).lerp(cycleColors.dayTop, cycle.dayAmount)
+    topColor.lerp(cycleColors.sunsetTop, cycle.goldenAmount * 0.8)
+    midColor.copy(cycleColors.nightMid).lerp(cycleColors.dayMid, cycle.dayAmount)
+    midColor.lerp(cycleColors.sunsetMid, cycle.goldenAmount * 0.88)
+    horizonColor.copy(cycleColors.nightHorizon).lerp(cycleColors.dayHorizon, cycle.dayAmount)
+    horizonColor.lerp(cycleColors.sunsetHorizon, cycle.goldenAmount * 0.9)
+
+    uniforms.topColor.value.copy(topColor)
+    uniforms.midColor.value.copy(midColor)
+    uniforms.horizonColor.value.copy(horizonColor)
+    uniforms.sunDirection.value.set(cycle.sunX, cycle.sunY, cycle.sunZ).normalize()
+    uniforms.moonAmount.value = cycle.nightAmount
+
+    sunRef.current.position.set(cycle.sunX * 70, cycle.sunY * 70, cycle.sunZ * 70)
+    sunGlowRef.current.position.copy(sunRef.current.position)
+    moonRef.current.position.set(cycle.moonX * 68, cycle.moonY * 68, cycle.moonZ * 68)
+    sunRef.current.lookAt(camera.position)
+    sunGlowRef.current.lookAt(camera.position)
+    moonRef.current.lookAt(camera.position)
+
+    material.opacity = clamp01(cycle.dayAmount + cycle.goldenAmount * 0.65)
+    glowMaterial.opacity = clamp01(0.1 + cycle.goldenAmount * 0.28 + cycle.dayAmount * 0.08)
+    moonMaterial.opacity = cycle.nightAmount * 0.85
+  })
 
   return (
     <group renderOrder={-1000}>
@@ -455,13 +675,17 @@ function SunsetSky() {
         />
       </mesh>
 
-      <mesh position={[-30, 12.8, -50]} renderOrder={-900}>
+      <mesh ref={sunRef} position={[-30, 12.8, -50]} renderOrder={-900}>
         <circleGeometry args={[5.2, 64]} />
-        <meshBasicMaterial color="#ffd18a" transparent opacity={0.92} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial ref={sunMaterialRef} color="#ffd18a" transparent opacity={0.92} depthWrite={false} toneMapped={false} />
       </mesh>
-      <mesh position={[-30, 12.8, -50]} renderOrder={-901}>
+      <mesh ref={sunGlowRef} position={[-30, 12.8, -50]} renderOrder={-901}>
         <circleGeometry args={[13, 64]} />
-        <meshBasicMaterial color="#ff8f5e" transparent opacity={0.16} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial ref={sunGlowMaterialRef} color="#ff8f5e" transparent opacity={0.16} depthWrite={false} toneMapped={false} />
+      </mesh>
+      <mesh ref={moonRef} position={[28, 20, 50]} renderOrder={-902}>
+        <circleGeometry args={[3.4, 48]} />
+        <meshBasicMaterial ref={moonMaterialRef} color="#d9e6ff" transparent opacity={0} depthWrite={false} toneMapped={false} />
       </mesh>
 
       <Cloud position={[-18, 9.5, -42]} scale={2.2} color="#ffe0c7" shadowColor="#d98d7a" />
@@ -562,8 +786,7 @@ function PlayerRig({ setFocusedId, openExhibit }) {
 
     velocity.current.lerp(move, Math.min(delta * 12, 1))
     camera.position.addScaledVector(velocity.current, delta)
-    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -14.8, 14.8)
-    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -19.2, 17.8)
+    resolvePlayerCollision(camera.position)
 
     const moveAmount = THREE.MathUtils.clamp(velocity.current.length() / speed, 0, 1)
     const t = clock.elapsedTime
@@ -600,22 +823,23 @@ function OutdoorAlley() {
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[46, 52]} />
+        <planeGeometry args={[82, 92, 14, 16]} />
         <meshToonMaterial color={palette.grass} />
       </mesh>
 
+      <DistantWorld />
       <GroundPaint />
 
-      <mesh position={[0, 0.035, -1]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[4.8, 39]} />
+      <mesh position={[0, 0.035, -3.5]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[5.1, 58]} />
         <meshToonMaterial color={palette.path} />
       </mesh>
-      <mesh position={[-2.65, 0.055, -1]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.18, 38]} />
+      <mesh position={[-2.78, 0.055, -3.5]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.2, 57.5]} />
         <meshToonMaterial color={palette.pathLight} />
       </mesh>
-      <mesh position={[2.65, 0.055, -1]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.18, 38]} />
+      <mesh position={[2.78, 0.055, -3.5]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.2, 57.5]} />
         <meshToonMaterial color={palette.pathLight} />
       </mesh>
 
@@ -637,6 +861,7 @@ function OutdoorAlley() {
       <PathPebbles />
       <LeafScatter />
       <FloatingMotes />
+      <Fireflies />
       <FenceLine side={-1} />
       <FenceLine side={1} />
       <Cloud position={[-9, 8.7, -20]} scale={1.25} color="#ffe6cf" shadowColor="#dca082" />
@@ -691,6 +916,10 @@ function OutdoorAlley() {
 
       <Bench position={[-3.8, 0, 6.8]} rotation={[0, -0.3, 0]} />
       <Bench position={[3.9, 0, 8.7]} rotation={[0, 0.32, 0]} />
+      <Campfire position={[-7.7, 0, 15.6]} />
+      <PicnicSpot position={[7.4, 0, 16.4]} rotation={[0, -0.55, 0]} />
+      <ToolCart position={[-8.5, 0, -17.2]} rotation={[0, 0.32, 0]} />
+      <Mailbox position={[3.8, 0, -20.7]} rotation={[0, -0.18, 0]} />
       <LampPost position={[-3.1, 0, -10.6]} />
       <LampPost position={[3.1, 0, -6]} />
       <LampPost position={[-3.1, 0, 1.1]} />
@@ -703,14 +932,147 @@ function OutdoorAlley() {
   )
 }
 
+function DistantWorld() {
+  return (
+    <group>
+      <mesh position={[0, -0.08, -38]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[58, 18, 6, 3]} />
+        <meshToonMaterial color="#2b7c59" />
+      </mesh>
+      <mesh position={[0, -0.09, 32]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[58, 20, 6, 3]} />
+        <meshToonMaterial color="#2f865a" />
+      </mesh>
+
+      <MountainRange />
+      <DistantTreeLine />
+      <BoundaryHedges />
+
+      {[
+        [-28, -0.4, -35, 12, 2.8, 5.8, '#1e694f'],
+        [28, -0.5, -34, 14, 3.2, 5.4, '#207552'],
+        [-30, -0.5, 25, 14, 2.7, 5.5, '#236f50'],
+        [30, -0.5, 25, 13, 2.9, 5.8, '#2b8157'],
+        [0, -0.6, 34, 22, 3.3, 7.8, '#287d55'],
+      ].map(([x, y, z, sx, sy, sz, color]) => (
+        <Hill key={`${x}-${z}`} position={[x, y, z]} scale={[sx, sy, sz]} color={color} />
+      ))}
+    </group>
+  )
+}
+
+function MountainRange() {
+  return (
+    <group>
+      {[
+        [-26, -0.35, -47, 6.8, 8.2, 5.8, '#315b6f'],
+        [-16, -0.5, -50, 8.2, 9.5, 6.4, '#426c7a'],
+        [-5, -0.6, -49, 7.2, 7.4, 5.8, '#385f74'],
+        [8, -0.45, -51, 8.6, 8.8, 6.2, '#4c7480'],
+        [21, -0.5, -48, 7.4, 7.9, 5.8, '#345d70'],
+      ].map(([x, y, z, sx, sy, sz, color]) => (
+        <mesh key={`${x}-${z}`} position={[x, y + sy * 0.5, z]} scale={[sx, sy, sz]} castShadow receiveShadow>
+          <coneGeometry args={[1, 1, 5]} />
+          <meshToonMaterial color={color} />
+        </mesh>
+      ))}
+      {[
+        [-16, 8.3, -50, 2.6],
+        [8, 7.6, -51, 2.2],
+      ].map(([x, y, z, scale]) => (
+        <mesh key={`${x}-${y}`} position={[x, y, z]} scale={[scale, scale * 0.48, scale]}>
+          <coneGeometry args={[1, 1, 5]} />
+          <meshToonMaterial color="#f2dcb8" />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function DistantTreeLine() {
+  const trunkRef = useRef()
+  const crownRef = useRef()
+  const trees = useMemo(
+    () =>
+      Array.from({ length: 86 }, (_, index) => {
+        const back = index < 44
+        const x = back ? -32 + randomAt(index + 1000) * 64 : (index % 2 === 0 ? -28 : 28) + randomAt(index + 1001) * 2.6
+        const z = back ? -35.5 + randomAt(index + 1002) * 5.2 : -28 + randomAt(index + 1003) * 58
+        const scale = 0.55 + randomAt(index + 1004) * 0.72
+        return { position: [x, 0, z], scale, rotation: randomAt(index + 1005) * Math.PI }
+      }),
+    [],
+  )
+
+  useInstancedTransforms(trunkRef, trees, ({ position, scale }, dummy) => {
+    dummy.position.set(position[0], 0.62 * scale, position[2])
+    dummy.scale.set(0.16 * scale, 1.25 * scale, 0.16 * scale)
+  })
+
+  useInstancedTransforms(crownRef, trees, ({ position, scale, rotation }, dummy) => {
+    dummy.position.set(position[0], 1.58 * scale, position[2])
+    dummy.rotation.set(0, rotation, 0)
+    dummy.scale.set(0.95 * scale, 1.35 * scale, 0.95 * scale)
+  })
+
+  return (
+    <group>
+      <instancedMesh ref={trunkRef} args={[null, null, trees.length]} frustumCulled={false}>
+        <cylinderGeometry args={[1, 1, 1, 6]} />
+        <meshToonMaterial color="#694734" />
+      </instancedMesh>
+      <instancedMesh ref={crownRef} args={[null, null, trees.length]} frustumCulled={false}>
+        <coneGeometry args={[1, 1, 7]} />
+        <meshToonMaterial color="#1b6d52" />
+      </instancedMesh>
+    </group>
+  )
+}
+
+function BoundaryHedges() {
+  const ref = useRef()
+  const hedges = useMemo(
+    () => {
+      const items = []
+
+      for (let index = 0; index < 42; index += 1) {
+        const z = WORLD_LIMITS.minZ + index * ((WORLD_LIMITS.maxZ - WORLD_LIMITS.minZ) / 41)
+        items.push({ position: [WORLD_LIMITS.minX - 0.9 + randomAt(index + 1200) * 0.4, 0.62, z], scale: 0.74 + randomAt(index + 1201) * 0.45 })
+        items.push({ position: [WORLD_LIMITS.maxX + 0.9 - randomAt(index + 1300) * 0.4, 0.62, z], scale: 0.74 + randomAt(index + 1301) * 0.45 })
+      }
+
+      for (let index = 0; index < 34; index += 1) {
+        const x = WORLD_LIMITS.minX + index * ((WORLD_LIMITS.maxX - WORLD_LIMITS.minX) / 33)
+        items.push({ position: [x, 0.62, WORLD_LIMITS.minZ - 0.75 + randomAt(index + 1400) * 0.35], scale: 0.78 + randomAt(index + 1401) * 0.5 })
+        items.push({ position: [x, 0.62, WORLD_LIMITS.maxZ + 0.9 - randomAt(index + 1500) * 0.35], scale: 0.78 + randomAt(index + 1501) * 0.5 })
+      }
+
+      return items
+    },
+    [],
+  )
+
+  useInstancedTransforms(ref, hedges, ({ position, scale }, dummy) => {
+    dummy.position.set(...position)
+    dummy.scale.set(scale * 1.2, scale * 0.75, scale)
+  })
+
+  return (
+    <instancedMesh ref={ref} args={[null, null, hedges.length]} frustumCulled={false} receiveShadow>
+      <sphereGeometry args={[1, 12, 8]} />
+      <meshToonMaterial color="#1d7251" />
+    </instancedMesh>
+  )
+}
+
 function GroundPaint() {
   const ref = useRef()
   const patches = useMemo(
     () =>
-      Array.from({ length: 170 }, (_, index) => {
+      Array.from({ length: 250 }, (_, index) => {
         const side = randomAt(index + 500) > 0.5 ? 1 : -1
-        const x = side * (3.6 + randomAt(index + 501) * 16.6)
-        const z = -22.5 + randomAt(index + 502) * 45
+        const x = side * (3.6 + randomAt(index + 501) * 25)
+        const z = -37 + randomAt(index + 502) * 70
         const wide = 0.7 + randomAt(index + 503) * 2.2
         return {
           position: [x, 0.041, z],
@@ -746,10 +1108,10 @@ function GrassField() {
   const ref = useRef()
   const blades = useMemo(
     () =>
-      Array.from({ length: 1350 }, (_, index) => {
+      Array.from({ length: 1850 }, (_, index) => {
         const side = randomAt(index) > 0.5 ? 1 : -1
-        const x = side * (2.68 + randomAt(index + 1) * 15.5)
-        const z = -20.5 + randomAt(index + 2) * 41.2
+        const x = side * (2.8 + randomAt(index + 1) * 22.5)
+        const z = -34.5 + randomAt(index + 2) * 66
         const height = 0.2 + randomAt(index + 3) * 0.72
         return {
           height,
@@ -782,11 +1144,11 @@ function PathPebbles() {
   const ref = useRef()
   const pebbles = useMemo(
     () =>
-      Array.from({ length: 220 }, (_, index) => ({
+      Array.from({ length: 290 }, (_, index) => ({
         position: [
           -2.12 + randomAt(index + 101) * 4.24,
           0.085,
-          -19.4 + randomAt(index + 102) * 38.5,
+          -31.5 + randomAt(index + 102) * 56,
         ],
         scale: [
           0.055 + randomAt(index + 103) * 0.17,
@@ -818,8 +1180,8 @@ function PathBrushStrokes() {
   const ref = useRef()
   const strokes = useMemo(
     () =>
-      Array.from({ length: 58 }, (_, index) => ({
-        position: [-2.1 + randomAt(index + 700) * 4.2, 0.074, -19.2 + index * 0.66],
+      Array.from({ length: 86 }, (_, index) => ({
+        position: [-2.25 + randomAt(index + 700) * 4.5, 0.074, -31.4 + index * 0.66],
         rotation: -0.25 + randomAt(index + 701) * 0.5,
         scale: [0.28 + randomAt(index + 702) * 0.72, 0.035, 0.035 + randomAt(index + 703) * 0.05],
         color: randomAt(index + 704) > 0.5 ? palette.pathLight : palette.pathDark,
@@ -846,9 +1208,9 @@ function LeafScatter() {
   const ref = useRef()
   const leaves = useMemo(
     () =>
-      Array.from({ length: 240 }, (_, index) => {
-        const x = -15 + randomAt(index + 800) * 30
-        const z = -20.5 + randomAt(index + 801) * 41
+      Array.from({ length: 340 }, (_, index) => {
+        const x = -24 + randomAt(index + 800) * 48
+        const z = -34 + randomAt(index + 801) * 64
         const onPath = Math.abs(x) < 2.55
         return {
           position: [x, 0.105, z],
@@ -902,6 +1264,54 @@ function FloatingMotes() {
     <instancedMesh ref={ref} args={[null, null, motes.length]} frustumCulled={false}>
       <sphereGeometry args={[1, 8, 6]} />
       <meshBasicMaterial color="#ffe0a1" transparent opacity={0.58} toneMapped={false} />
+    </instancedMesh>
+  )
+}
+
+function Fireflies() {
+  const ref = useRef()
+  const materialRef = useRef()
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const fireflies = useMemo(
+    () =>
+      Array.from({ length: 70 }, (_, index) => ({
+        x: -16 + randomAt(index + 1600) * 32,
+        y: 0.8 + randomAt(index + 1601) * 2.4,
+        z: -18 + randomAt(index + 1602) * 38,
+        phase: randomAt(index + 1603) * Math.PI * 2,
+        speed: 0.55 + randomAt(index + 1604) * 1.4,
+        drift: 0.24 + randomAt(index + 1605) * 0.62,
+        size: 0.035 + randomAt(index + 1606) * 0.055,
+      })),
+    [],
+  )
+
+  useFrame(({ clock }) => {
+    if (!ref.current || !materialRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    const t = clock.elapsedTime
+
+    fireflies.forEach((fly, index) => {
+      const pulse = 0.72 + Math.sin(t * 5.2 + fly.phase) * 0.28
+      dummy.position.set(
+        fly.x + Math.sin(t * fly.speed + fly.phase) * fly.drift,
+        fly.y + Math.sin(t * 1.6 + fly.phase * 0.7) * 0.22,
+        fly.z + Math.cos(t * fly.speed * 0.72 + fly.phase) * fly.drift,
+      )
+      dummy.scale.setScalar(fly.size * pulse)
+      dummy.updateMatrix()
+      ref.current.setMatrixAt(index, dummy.matrix)
+    })
+
+    materialRef.current.opacity = cycle.nightAmount * (0.36 + Math.sin(t * 2.4) * 0.08)
+    ref.current.instanceMatrix.needsUpdate = true
+  })
+
+  return (
+    <instancedMesh ref={ref} args={[null, null, fireflies.length]} frustumCulled={false}>
+      <sphereGeometry args={[1, 10, 8]} />
+      <meshBasicMaterial ref={materialRef} color="#fff2a0" transparent opacity={0} depthWrite={false} toneMapped={false} />
     </instancedMesh>
   )
 }
@@ -1122,7 +1532,174 @@ function Bench({ position, rotation }) {
   )
 }
 
+function Campfire({ position }) {
+  const lightRef = useRef()
+  const emberRef = useRef()
+
+  useFrame(({ clock }) => {
+    if (!lightRef.current || !emberRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    const flicker = 0.75 + Math.sin(clock.elapsedTime * 12.6) * 0.16 + Math.sin(clock.elapsedTime * 23.2) * 0.08
+    lightRef.current.intensity = (1.2 + cycle.nightAmount * 5.2 + cycle.goldenAmount * 1.6) * flicker
+    emberRef.current.scale.setScalar(0.86 + flicker * 0.2)
+  })
+
+  return (
+    <group position={position}>
+      {[0, 1, 2, 3, 4].map((index) => {
+        const angle = (index / 5) * Math.PI * 2
+        return (
+          <mesh key={index} position={[Math.cos(angle) * 0.58, 0.12, Math.sin(angle) * 0.58]} scale={[0.34, 0.16, 0.28]} castShadow receiveShadow>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshToonMaterial color={index % 2 === 0 ? '#5f6658' : '#78806d'} />
+          </mesh>
+        )
+      })}
+      {[0, 1, 2].map((index) => (
+        <mesh key={index} position={[0, 0.24 + index * 0.04, 0]} rotation={[0, (index / 3) * Math.PI, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.1, 0.14, 1.1, 8]} />
+          <meshToonMaterial color={index === 1 ? '#73442c' : '#8f5634'} />
+        </mesh>
+      ))}
+      <mesh ref={emberRef} position={[0, 0.34, 0]}>
+        <sphereGeometry args={[0.32, 12, 8]} />
+        <meshBasicMaterial color="#ff8d3a" transparent opacity={0.62} depthWrite={false} toneMapped={false} />
+      </mesh>
+      {[
+        [0, 0.72, 0, 0.42, '#ffd05f'],
+        [-0.12, 0.56, 0.08, 0.32, '#ff7a38'],
+        [0.16, 0.62, -0.05, 0.36, '#fff0a4'],
+      ].map(([x, y, z, scale, color]) => (
+        <FireFlame key={`${x}-${z}`} position={[x, y, z]} scale={scale} color={color} />
+      ))}
+      <pointLight ref={lightRef} position={[0, 1.18, 0]} color="#ff9c48" intensity={2.5} distance={8.5} />
+    </group>
+  )
+}
+
+function FireFlame({ position, scale, color }) {
+  const ref = useRef()
+  const materialRef = useRef()
+
+  useFrame(({ clock }) => {
+    if (!ref.current || !materialRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    const flicker = 0.88 + Math.sin(clock.elapsedTime * 10.4 + position[0] * 8) * 0.12
+    ref.current.scale.set(scale * flicker, scale * 1.75 * flicker, scale * flicker)
+    materialRef.current.opacity = 0.68 + cycle.nightAmount * 0.22
+  })
+
+  return (
+    <mesh ref={ref} position={position}>
+      <coneGeometry args={[1, 1.7, 7]} />
+      <meshBasicMaterial ref={materialRef} color={color} transparent opacity={0.78} depthWrite={false} toneMapped={false} />
+    </mesh>
+  )
+}
+
+function PicnicSpot({ position, rotation }) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh position={[0, 0.065, 0]} rotation={[-Math.PI / 2, 0, 0.2]} receiveShadow>
+        <planeGeometry args={[2.4, 1.55]} />
+        <meshToonMaterial color="#d76558" />
+      </mesh>
+      <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, -0.6]}>
+        <planeGeometry args={[2.15, 0.16]} />
+        <meshBasicMaterial color="#f4d59a" transparent opacity={0.72} />
+      </mesh>
+      <mesh position={[-0.52, 0.28, 0.18]} castShadow>
+        <boxGeometry args={[0.58, 0.38, 0.42]} />
+        <meshToonMaterial color="#c18955" />
+      </mesh>
+      <mesh position={[-0.52, 0.5, 0.18]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.2, 0.025, 8, 14]} />
+        <meshToonMaterial color="#845832" />
+      </mesh>
+      {[
+        [0.42, 0.2, -0.18, '#f2d37a'],
+        [0.7, 0.2, 0.16, '#f06f44'],
+        [0.18, 0.18, 0.26, '#78b95f'],
+      ].map(([x, y, z, color]) => (
+        <mesh key={`${x}-${z}`} position={[x, y, z]} castShadow>
+          <sphereGeometry args={[0.14, 12, 8]} />
+          <meshToonMaterial color={color} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function ToolCart({ position, rotation }) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <boxGeometry args={[1.4, 0.46, 0.78]} />
+        <meshToonMaterial color="#a66a43" />
+      </mesh>
+      <mesh position={[0, 0.74, -0.3]} castShadow>
+        <boxGeometry args={[1.55, 0.12, 0.18]} />
+        <meshToonMaterial color="#d19454" />
+      </mesh>
+      {[-0.5, 0.5].map((x) => (
+        <mesh key={x} position={[x, 0.15, 0.44]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.18, 0.035, 8, 18]} />
+          <meshToonMaterial color="#293447" />
+        </mesh>
+      ))}
+      <mesh position={[0.12, 0.98, 0.04]} rotation={[0.45, 0, -0.22]} castShadow>
+        <boxGeometry args={[0.18, 0.88, 0.12]} />
+        <meshToonMaterial color="#51616b" />
+      </mesh>
+      <mesh position={[-0.25, 0.97, 0.0]} rotation={[0.25, 0, 0.32]} castShadow>
+        <cylinderGeometry args={[0.055, 0.055, 0.98, 8]} />
+        <meshToonMaterial color="#6c4a34" />
+      </mesh>
+    </group>
+  )
+}
+
+function Mailbox({ position, rotation }) {
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh position={[0, 0.58, 0]} castShadow>
+        <cylinderGeometry args={[0.36, 0.36, 0.92, 16, 1, false, 0, Math.PI]} />
+        <meshToonMaterial color="#557e8b" />
+      </mesh>
+      <mesh position={[0, 0.38, 0]} castShadow>
+        <boxGeometry args={[0.72, 0.38, 0.92]} />
+        <meshToonMaterial color="#557e8b" />
+      </mesh>
+      <mesh position={[0, 0.92, 0.48]} castShadow>
+        <boxGeometry args={[0.58, 0.16, 0.06]} />
+        <meshToonMaterial color="#f4e5c3" />
+      </mesh>
+      <mesh position={[0, -0.16, 0]} castShadow>
+        <boxGeometry args={[0.13, 0.9, 0.13]} />
+        <meshToonMaterial color={palette.darkWood} />
+      </mesh>
+    </group>
+  )
+}
+
 function LampPost({ position }) {
+  const lightRef = useRef()
+  const bulbRef = useRef()
+  const glowRef = useRef()
+
+  useFrame(({ clock }) => {
+    if (!lightRef.current || !bulbRef.current || !glowRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    const flicker = 0.92 + Math.sin(clock.elapsedTime * 7.4 + position[0]) * 0.05
+    const glow = cycle.lampAmount * flicker
+    lightRef.current.intensity = 0.22 + glow * 2.25
+    bulbRef.current.opacity = 0.48 + glow * 0.52
+    glowRef.current.opacity = 0.05 + glow * 0.22
+  })
+
   return (
     <group position={position}>
       <mesh position={[0, 1.05, 0]} castShadow>
@@ -1135,13 +1712,13 @@ function LampPost({ position }) {
       </mesh>
       <mesh position={[0.55, 1.95, 0]} castShadow>
         <sphereGeometry args={[0.19, 18, 10]} />
-        <meshBasicMaterial color="#fff2a2" toneMapped={false} />
+        <meshBasicMaterial ref={bulbRef} color="#fff2a2" transparent opacity={0.64} toneMapped={false} />
       </mesh>
       <mesh position={[0.55, 1.95, 0]} scale={0.56}>
         <sphereGeometry args={[1, 16, 8]} />
-        <meshBasicMaterial color="#ffc980" transparent opacity={0.15} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial ref={glowRef} color="#ffc980" transparent opacity={0.15} depthWrite={false} toneMapped={false} />
       </mesh>
-      <pointLight position={[0.55, 1.95, 0]} color="#ffe892" intensity={1.45} distance={4.8} />
+      <pointLight ref={lightRef} position={[0.55, 1.95, 0]} color="#ffe892" intensity={1.45} distance={5.2} />
     </group>
   )
 }
@@ -1163,16 +1740,40 @@ function StringLights() {
                   <cylinderGeometry args={[0.018, 0.018, 0.18, 6]} />
                   <meshToonMaterial color="#4b4653" />
                 </mesh>
-                <mesh>
-                  <sphereGeometry args={[0.09, 12, 8]} />
-                  <meshBasicMaterial color={index % 2 === 0 ? '#ffe294' : '#ffb27e'} toneMapped={false} />
-                </mesh>
+                <StringLightBulb color={index % 2 === 0 ? '#ffe294' : '#ffb27e'} offset={index + runIndex * 3} />
               </group>
             )
           })}
         </group>
       ))}
     </group>
+  )
+}
+
+function StringLightBulb({ color, offset }) {
+  const materialRef = useRef()
+  const glowRef = useRef()
+
+  useFrame(({ clock }) => {
+    if (!materialRef.current || !glowRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    const pulse = 0.9 + Math.sin(clock.elapsedTime * 4.4 + offset) * 0.1
+    materialRef.current.opacity = 0.38 + cycle.lampAmount * 0.58 * pulse
+    glowRef.current.opacity = cycle.lampAmount * 0.15 * pulse
+  })
+
+  return (
+    <>
+      <mesh>
+        <sphereGeometry args={[0.09, 12, 8]} />
+        <meshBasicMaterial ref={materialRef} color={color} transparent opacity={0.7} toneMapped={false} />
+      </mesh>
+      <mesh scale={2.4}>
+        <sphereGeometry args={[0.09, 12, 8]} />
+        <meshBasicMaterial ref={glowRef} color={color} transparent opacity={0.04} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </>
   )
 }
 
