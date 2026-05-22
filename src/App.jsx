@@ -1,11 +1,11 @@
 /* eslint-disable react-hooks/immutability */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   ContactShadows,
   Text,
 } from '@react-three/drei'
-import { Bloom, DepthOfField, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
+import { Bloom, ChromaticAberration, DepthOfField, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
 import {
   Box,
   Braces,
@@ -142,17 +142,32 @@ const DAY_LENGTH_SECONDS = 300
 const START_PHASE = 0.68
 const PLAYER_RADIUS = 0.48
 const WORLD_LIMITS = {
-  minX: -21.8,
-  maxX: 21.8,
-  minZ: -33.5,
-  maxZ: 27,
+  minX: -23.4,
+  maxX: 23.4,
+  minZ: -35.5,
+  maxZ: 29.5,
 }
 
 const COLLISION_CIRCLES = [
   { x: 0, z: 7.8, radius: 2.65 },
   { x: 8.9, z: -13.2, radius: 3.2 },
-  { x: -7.7, z: 15.6, radius: 1.7 },
   { x: 0, z: -17.2, radius: 2.1 },
+  { x: -13, z: -20, radius: 5.4 },
+  { x: 13, z: -18, radius: 6.1 },
+  { x: -18, z: 14, radius: 5.8 },
+  { x: 18, z: 13, radius: 5.8 },
+  ...[
+    [-12, -15, 1.15],
+    [-10.5, -3, 1],
+    [-11.5, 8, 1.1],
+    [11.5, -8, 1.1],
+    [12.2, 2, 1],
+    [10.5, 12, 1.1],
+    [-15, -8, 1.2],
+    [15, -14, 1.15],
+    [14.5, 9.5, 1.2],
+    [-14, 13.5, 1.15],
+  ].map(([x, z, radius]) => ({ x, z, radius })),
   ...exhibits.map((exhibit) => ({
     x: exhibit.position[0],
     z: exhibit.position[2],
@@ -177,6 +192,42 @@ const cycleColors = {
   daySun: new THREE.Color('#fff3c0'),
   moonLight: new THREE.Color('#98b9ff'),
 }
+
+const starMap = [
+  { name: 'Polaris', az: 8, alt: 58, size: 0.16 },
+  { name: 'Dubhe', az: -22, alt: 54, size: 0.13 },
+  { name: 'Merak', az: -17, alt: 48, size: 0.12 },
+  { name: 'Phecda', az: -8, alt: 46, size: 0.11 },
+  { name: 'Megrez', az: -2, alt: 50, size: 0.09 },
+  { name: 'Alioth', az: 6, alt: 53, size: 0.12 },
+  { name: 'Mizar', az: 14, alt: 56, size: 0.12 },
+  { name: 'Alkaid', az: 23, alt: 57, size: 0.11 },
+  { name: 'Betelgeuse', az: -48, alt: 33, size: 0.14 },
+  { name: 'Bellatrix', az: -35, alt: 36, size: 0.11 },
+  { name: 'Alnilam', az: -42, alt: 26, size: 0.13 },
+  { name: 'Alnitak', az: -47, alt: 24, size: 0.11 },
+  { name: 'Mintaka', az: -37, alt: 28, size: 0.11 },
+  { name: 'Rigel', az: -33, alt: 16, size: 0.15 },
+  { name: 'Saiph', az: -51, alt: 17, size: 0.1 },
+  { name: 'Sirius', az: -62, alt: 12, size: 0.18 },
+  { name: 'Deneb', az: 42, alt: 48, size: 0.15 },
+  { name: 'Sadr', az: 36, alt: 42, size: 0.1 },
+  { name: 'Albireo', az: 31, alt: 31, size: 0.1 },
+  { name: 'Vega', az: 57, alt: 50, size: 0.17 },
+  { name: 'Altair', az: 49, alt: 26, size: 0.14 },
+  { name: 'Schedar', az: 0, alt: 36, size: 0.12 },
+  { name: 'Caph', az: 10, alt: 34, size: 0.1 },
+  { name: 'Ruchbah', az: -7, alt: 41, size: 0.1 },
+  { name: 'Segin', az: -16, alt: 43, size: 0.09 },
+  { name: 'Achird', az: 5, alt: 46, size: 0.09 },
+]
+
+const constellationLines = [
+  ['Dubhe', 'Merak'], ['Merak', 'Phecda'], ['Phecda', 'Megrez'], ['Megrez', 'Alioth'], ['Alioth', 'Mizar'], ['Mizar', 'Alkaid'],
+  ['Betelgeuse', 'Bellatrix'], ['Betelgeuse', 'Alnitak'], ['Bellatrix', 'Mintaka'], ['Alnitak', 'Alnilam'], ['Alnilam', 'Mintaka'], ['Alnitak', 'Saiph'], ['Mintaka', 'Rigel'], ['Saiph', 'Rigel'],
+  ['Deneb', 'Sadr'], ['Sadr', 'Albireo'], ['Sadr', 'Vega'], ['Sadr', 'Altair'],
+  ['Caph', 'Schedar'], ['Schedar', 'Achird'], ['Achird', 'Ruchbah'], ['Ruchbah', 'Segin'],
+]
 
 function clamp01(value) {
   return THREE.MathUtils.clamp(value, 0, 1)
@@ -213,7 +264,6 @@ function getCycleState(elapsedTime) {
     goldenAmount,
     lampAmount,
     exposure: 0.74 + dayAmount * 0.36 + goldenAmount * 0.08,
-    blurAmount: nightAmount * 0.34 + goldenAmount * 0.1,
   }
 }
 
@@ -242,17 +292,31 @@ function App() {
   const [isLocked, setIsLocked] = useState(false)
   const [focusedId, setFocusedId] = useState(null)
   const [activeId, setActiveId] = useState(null)
-  const [showIndex, setShowIndex] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [hasEntered, setHasEntered] = useState(() =>
     new URLSearchParams(window.location.search).has('preview'),
   )
+  const activeIdRef = useRef(activeId)
+  const hasEnteredRef = useRef(hasEntered)
+  const isPausedRef = useRef(isPaused)
 
   const focusedExhibit = exhibits.find((item) => item.id === focusedId)
   const activeExhibit = exhibits.find((item) => item.id === activeId)
 
   useEffect(() => {
+    activeIdRef.current = activeId
+    hasEnteredRef.current = hasEntered
+    isPausedRef.current = isPaused
+  }, [activeId, hasEntered, isPaused])
+
+  useEffect(() => {
     const onPointerLockChange = () => {
-      setIsLocked(Boolean(document.pointerLockElement))
+      const locked = Boolean(document.pointerLockElement)
+      setIsLocked(locked)
+
+      if (!locked && hasEnteredRef.current && !activeIdRef.current && !isPausedRef.current) {
+        setIsPaused(true)
+      }
     }
 
     document.addEventListener('pointerlockchange', onPointerLockChange)
@@ -260,33 +324,13 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (activeId || showIndex) {
+    if (activeId || isPaused) {
       document.exitPointerLock?.()
     }
-  }, [activeId, showIndex])
+  }, [activeId, isPaused])
 
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (event.code === 'Escape') {
-        setActiveId(null)
-        setShowIndex(false)
-      }
-
-      if (event.code === 'KeyE' && focusedId && !activeId) {
-        setActiveId(focusedId)
-      }
-
-      if (event.code === 'KeyI') {
-        setShowIndex((value) => !value)
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [activeId, focusedId])
-
-  const enterMuseum = () => {
-    setHasEntered(true)
+  const requestGameFocus = useCallback(() => {
+    setIsPaused(false)
     try {
       const pointerLockRequest = document.body.requestPointerLock?.()
       pointerLockRequest?.catch?.(() => {
@@ -295,7 +339,45 @@ function App() {
     } catch {
       setIsLocked(false)
     }
-  }
+  }, [])
+
+  const enterMuseum = useCallback(() => {
+    setHasEntered(true)
+    requestGameFocus()
+  }, [requestGameFocus])
+
+  const resumeGame = useCallback(() => {
+    requestGameFocus()
+  }, [requestGameFocus])
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.code === 'Escape') {
+        event.preventDefault()
+
+        if (activeIdRef.current) {
+          setActiveId(null)
+          return
+        }
+
+        if (!hasEnteredRef.current) return
+
+        if (isPausedRef.current) {
+          resumeGame()
+          return
+        }
+
+        setIsPaused(true)
+      }
+
+      if (event.code === 'KeyE' && focusedId && !activeId && !isPausedRef.current) {
+        setActiveId(focusedId)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [activeId, focusedId, resumeGame])
 
   return (
     <main className="museum-app">
@@ -307,7 +389,7 @@ function App() {
         performance={{ min: 0.72 }}
         onCreated={({ gl }) => {
           gl.shadowMap.enabled = true
-          gl.shadowMap.type = THREE.PCFShadowMap
+          gl.shadowMap.type = THREE.PCFSoftShadowMap
           gl.toneMapping = THREE.ACESFilmicToneMapping
           gl.toneMappingExposure = 1.06
         }}
@@ -315,6 +397,7 @@ function App() {
         <MuseumScene
           setFocusedId={setFocusedId}
           openExhibit={setActiveId}
+          isPaused={isPaused}
         />
       </Canvas>
 
@@ -335,20 +418,7 @@ function App() {
             <div>
               <p className="eyebrow">Creator Garden Alley</p>
               <h1>Portfolio Prototype</h1>
-              <div className="status-readout" aria-hidden="true">
-                <span>STATUS</span>
-                <strong>DAY CYCLE</strong>
-                <small>24H / 5MIN LOOP</small>
-              </div>
             </div>
-            <nav aria-label="Museum shortcuts">
-              <button type="button" onClick={() => setShowIndex(true)}>
-                INDEX
-              </button>
-              <button type="button" onClick={enterMuseum}>
-                FOCUS
-              </button>
-            </nav>
           </header>
 
           <aside className="controls-panel" aria-label="Controls">
@@ -366,22 +436,10 @@ function App() {
             </div>
           </aside>
 
-          <aside className="inventory-panel" aria-label="Visual slots">
-            <p>INVENTORY</p>
-            <div>
-              <span>1</span>
-              <span>2</span>
-              <span>3</span>
-            </div>
-          </aside>
-
-          <div className="stamina-bar" aria-hidden="true">
-            <span />
-          </div>
         </>
       )}
 
-      {focusedExhibit && hasEntered && !activeExhibit && !showIndex && (
+      {focusedExhibit && hasEntered && !activeExhibit && !isPaused && (
         <div className="focus-prompt">
           <span style={{ '--accent': focusedExhibit.accent }}>{focusedExhibit.title}</span>
           <kbd>E</kbd>
@@ -404,14 +462,15 @@ function App() {
         </section>
       )}
 
-      {(activeExhibit || showIndex) && (
+      {isPaused && hasEntered && !activeExhibit && (
+        <PauseMenu resume={resumeGame} />
+      )}
+
+      {activeExhibit && (
         <ProjectPanel
           exhibit={activeExhibit}
-          allExhibits={exhibits}
-          showIndex={showIndex}
           close={() => {
             setActiveId(null)
-            setShowIndex(false)
             try {
               const pointerLockRequest = document.body.requestPointerLock?.()
               pointerLockRequest?.catch?.(() => {
@@ -420,10 +479,6 @@ function App() {
             } catch {
               setIsLocked(false)
             }
-          }}
-          open={(id) => {
-            setShowIndex(false)
-            setActiveId(id)
           }}
         />
       )}
@@ -438,7 +493,7 @@ function App() {
   )
 }
 
-function MuseumScene({ setFocusedId, openExhibit }) {
+function MuseumScene({ setFocusedId, openExhibit, isPaused }) {
   return (
     <>
       <color attach="background" args={['#efaa7f']} />
@@ -447,7 +502,7 @@ function MuseumScene({ setFocusedId, openExhibit }) {
       <SunsetSky />
       <WorldLighting />
 
-      <PlayerRig setFocusedId={setFocusedId} openExhibit={openExhibit} />
+      <PlayerRig setFocusedId={setFocusedId} openExhibit={openExhibit} isPaused={isPaused} />
 
       <OutdoorAlley />
       <WelcomeStudio />
@@ -466,11 +521,12 @@ function MuseumScene({ setFocusedId, openExhibit }) {
         frames={1}
       />
 
-      <EffectComposer multisampling={0} resolutionScale={0.72}>
-        <DepthOfField focusDistance={0.025} focalLength={0.026} bokehScale={0.85} height={360} />
-        <Bloom intensity={0.28} luminanceThreshold={0.82} luminanceSmoothing={0.42} mipmapBlur />
-        <Noise opacity={0.035} />
-        <Vignette eskil={false} offset={0.18} darkness={0.42} />
+      <EffectComposer multisampling={0} resolutionScale={0.78}>
+        <DepthOfField focusDistance={0.055} focalLength={0.018} bokehScale={0.32} height={320} />
+        <Bloom intensity={0.36} luminanceThreshold={0.78} luminanceSmoothing={0.48} mipmapBlur />
+        <ChromaticAberration offset={[0.00028, 0.00018]} radialModulation modulationOffset={0.14} />
+        <Noise opacity={0.014} />
+        <Vignette eskil={false} offset={0.14} darkness={0.36} />
       </EffectComposer>
 
     </>
@@ -534,7 +590,6 @@ function WorldLighting() {
     if (clock.elapsedTime - lastCssUpdate.current > 0.18) {
       document.documentElement.style.setProperty('--world-night', cycle.nightAmount.toFixed(3))
       document.documentElement.style.setProperty('--world-sunset', cycle.goldenAmount.toFixed(3))
-      document.documentElement.style.setProperty('--world-blur', cycle.blurAmount.toFixed(3))
       lastCssUpdate.current = clock.elapsedTime
     }
   })
@@ -617,8 +672,8 @@ function SunsetSky() {
           float halo = pow(max(dot(direction, sunDirection), 0.0), 18.0);
           sky += vec3(1.0, 0.48, 0.18) * halo * 0.34;
           sky += vec3(1.0, 0.82, 0.48) * sun * 1.2;
-          float stars = step(0.997, fract(sin(dot(direction.xz * 620.0, vec2(12.9898, 78.233))) * 43758.5453));
-          stars *= smoothstep(0.22, 0.88, direction.y) * moonAmount * 0.55;
+          float stars = step(0.99998, fract(sin(dot(direction.xz * 420.0, vec2(12.9898, 78.233))) * 43758.5453));
+          stars *= smoothstep(0.32, 0.9, direction.y) * moonAmount * 0.035;
           sky += vec3(0.75, 0.86, 1.0) * stars;
 
           gl_FragColor = vec4(sky, 1.0);
@@ -687,15 +742,97 @@ function SunsetSky() {
         <circleGeometry args={[3.4, 48]} />
         <meshBasicMaterial ref={moonMaterialRef} color="#d9e6ff" transparent opacity={0} depthWrite={false} toneMapped={false} />
       </mesh>
+      <RealStarMap />
 
       <Cloud position={[-18, 9.5, -42]} scale={2.2} color="#ffe0c7" shadowColor="#d98d7a" />
       <Cloud position={[8, 11.2, -46]} scale={1.8} color="#ffd9bf" shadowColor="#d98776" />
       <Cloud position={[22, 7.2, -34]} scale={1.35} color="#f3c7b0" shadowColor="#c97872" />
+      <Cloud position={[-34, 13.6, -58]} scale={2.8} color="#ffd7bd" shadowColor="#b86f72" />
+      <Cloud position={[36, 12.4, -54]} scale={2.35} color="#ffe7ca" shadowColor="#c78379" />
+      <Cloud position={[2, 15.2, -64]} scale={3.05} color="#fff1d3" shadowColor="#d99082" />
     </group>
   )
 }
 
-function PlayerRig({ setFocusedId, openExhibit }) {
+function starToPosition({ az, alt }, radius = 82) {
+  const azimuth = THREE.MathUtils.degToRad(az)
+  const altitude = THREE.MathUtils.degToRad(alt)
+  const y = Math.sin(altitude) * radius
+  const flat = Math.cos(altitude) * radius
+  return [Math.sin(azimuth) * flat, y, -Math.cos(azimuth) * flat]
+}
+
+function RealStarMap() {
+  const groupRef = useRef()
+  const starMaterialRefs = useRef([])
+  const lineMaterialRefs = useRef([])
+  const starPositions = useMemo(() => {
+    const map = new Map()
+    starMap.forEach((star) => {
+      map.set(star.name, starToPosition(star))
+    })
+    return map
+  }, [])
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    groupRef.current.rotation.y = clock.elapsedTime * 0.006
+    starMaterialRefs.current.forEach((material) => {
+      if (material) material.opacity = cycle.nightAmount
+    })
+    lineMaterialRefs.current.forEach((material) => {
+      if (material) material.opacity = cycle.nightAmount * 0.34
+    })
+  })
+
+  return (
+    <group ref={groupRef} renderOrder={-850}>
+      {starMap.map((star, index) => (
+        <mesh key={star.name} position={starPositions.get(star.name)} scale={star.size * 2.15}>
+          <sphereGeometry args={[1, 10, 8]} />
+          <meshBasicMaterial
+            ref={(node) => {
+              starMaterialRefs.current[index] = node
+            }}
+            color="#e7f0ff"
+            transparent
+            opacity={0}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </mesh>
+      ))}
+      {constellationLines.map(([from, to], index) => {
+        const fromPosition = new THREE.Vector3(...starPositions.get(from))
+        const toPosition = new THREE.Vector3(...starPositions.get(to))
+        const mid = fromPosition.clone().lerp(toPosition, 0.5)
+        const length = fromPosition.distanceTo(toPosition)
+        const direction = toPosition.clone().sub(fromPosition).normalize()
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction)
+
+        return (
+          <mesh key={`${from}-${to}`} position={mid} quaternion={quaternion}>
+            <cylinderGeometry args={[0.038, 0.038, length, 6]} />
+            <meshBasicMaterial
+              ref={(node) => {
+                lineMaterialRefs.current[index] = node
+              }}
+              color="#94b9ff"
+              transparent
+              opacity={0}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        )
+      })}
+    </group>
+  )
+}
+
+function PlayerRig({ setFocusedId, openExhibit, isPaused }) {
   const { camera } = useThree()
   const pressed = useRef({})
   const velocity = useRef(new THREE.Vector3())
@@ -715,6 +852,8 @@ function PlayerRig({ setFocusedId, openExhibit }) {
     yaw.current = camera.rotation.y
 
     const onKeyDown = (event) => {
+      if (isPaused) return
+
       pressed.current[keys[event.code] || event.code] = true
       if (event.code === 'KeyE' && lastFocus.current) {
         openExhibit(lastFocus.current)
@@ -726,6 +865,8 @@ function PlayerRig({ setFocusedId, openExhibit }) {
     }
 
     const onPointerDown = (event) => {
+      if (isPaused) return
+
       if (
         event.target instanceof HTMLElement &&
         event.target.closest('button, .project-panel, .entry-overlay')
@@ -740,6 +881,8 @@ function PlayerRig({ setFocusedId, openExhibit }) {
     }
 
     const onPointerMove = (event) => {
+      if (isPaused) return
+
       const pointerLocked = Boolean(document.pointerLockElement)
       if (!pointerLocked && !isDragging.current) {
         return
@@ -763,9 +906,14 @@ function PlayerRig({ setFocusedId, openExhibit }) {
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('pointermove', onPointerMove)
     }
-  }, [camera, openExhibit])
+  }, [camera, isPaused, openExhibit])
 
   useFrame(({ clock }, delta) => {
+    if (isPaused) {
+      velocity.current.set(0, 0, 0)
+      return
+    }
+
     const speed = pressed.current.sprint ? 7.8 : 4.8
     const forward = forwardVector.current
     camera.getWorldDirection(forward)
@@ -823,7 +971,7 @@ function OutdoorAlley() {
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[82, 92, 14, 16]} />
+        <planeGeometry args={[138, 146, 18, 20]} />
         <meshToonMaterial color={palette.grass} />
       </mesh>
 
@@ -847,14 +995,7 @@ function OutdoorAlley() {
         <circleGeometry args={[4.3, 48]} />
         <meshToonMaterial color="#b99355" />
       </mesh>
-      <mesh position={[0, 0.07, 7.8]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[2.2, 36]} />
-        <meshToonMaterial color={palette.water} transparent opacity={0.78} />
-      </mesh>
-      <mesh position={[0, 0.09, 7.8]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.92, 2.24, 38]} />
-        <meshBasicMaterial color="#e5f0bc" transparent opacity={0.46} />
-      </mesh>
+      <Fountain position={[0, 0, 7.8]} />
 
       <PathBrushStrokes />
       <GrassField />
@@ -862,6 +1003,7 @@ function OutdoorAlley() {
       <LeafScatter />
       <FloatingMotes />
       <Fireflies />
+      <FireflyLightPool />
       <FenceLine side={-1} />
       <FenceLine side={1} />
       <Cloud position={[-9, 8.7, -20]} scale={1.25} color="#ffe6cf" shadowColor="#dca082" />
@@ -925,6 +1067,7 @@ function OutdoorAlley() {
       <LampPost position={[-3.1, 0, 1.1]} />
       <LampPost position={[3.1, 0, 11.7]} />
       <StringLights />
+      <LightArchways />
       <DirectionBoard position={[-2.9, 0, -15.4]} rotation={[0, 0.12, 0]} />
       <PaperTrail />
       <Rocks />
@@ -935,17 +1078,26 @@ function OutdoorAlley() {
 function DistantWorld() {
   return (
     <group>
-      <mesh position={[0, -0.08, -38]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[58, 18, 6, 3]} />
+      <mesh position={[0, -0.11, -62]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[132, 64, 12, 6]} />
         <meshToonMaterial color="#2b7c59" />
       </mesh>
-      <mesh position={[0, -0.09, 32]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[58, 20, 6, 3]} />
+      <mesh position={[0, -0.12, 56]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[132, 58, 12, 6]} />
         <meshToonMaterial color="#2f865a" />
+      </mesh>
+      <mesh position={[-58, -0.13, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[56, 122, 6, 12]} />
+        <meshToonMaterial color="#267a55" />
+      </mesh>
+      <mesh position={[58, -0.13, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[56, 122, 6, 12]} />
+        <meshToonMaterial color="#34885b" />
       </mesh>
 
       <MountainRange />
       <DistantTreeLine />
+      <FarForestBands />
       <BoundaryHedges />
 
       {[
@@ -954,9 +1106,92 @@ function DistantWorld() {
         [-30, -0.5, 25, 14, 2.7, 5.5, '#236f50'],
         [30, -0.5, 25, 13, 2.9, 5.8, '#2b8157'],
         [0, -0.6, 34, 22, 3.3, 7.8, '#287d55'],
+        [-48, -0.8, -4, 22, 4.2, 9.2, '#1f7650'],
+        [48, -0.75, 2, 23, 4.4, 9.5, '#2a8957'],
+        [-36, -0.7, 48, 19, 3.6, 8.4, '#2a8056'],
+        [38, -0.72, -52, 20, 3.9, 8.8, '#216f52'],
       ].map(([x, y, z, sx, sy, sz, color]) => (
         <Hill key={`${x}-${z}`} position={[x, y, z]} scale={[sx, sy, sz]} color={color} />
       ))}
+    </group>
+  )
+}
+
+function Fountain({ position }) {
+  const waterRef = useRef()
+  const sprayRef = useRef()
+  const lightRef = useRef()
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const drops = useMemo(
+    () =>
+      Array.from({ length: 54 }, (_, index) => ({
+        angle: (index / 54) * Math.PI * 2,
+        radius: 0.18 + randomAt(index + 1800) * 0.52,
+        height: 0.8 + randomAt(index + 1801) * 1.05,
+        speed: 0.75 + randomAt(index + 1802) * 1.5,
+        phase: randomAt(index + 1803) * Math.PI * 2,
+        size: 0.025 + randomAt(index + 1804) * 0.035,
+      })),
+    [],
+  )
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+
+    if (waterRef.current) {
+      waterRef.current.rotation.z = t * 0.16
+      waterRef.current.position.y = 0.19 + Math.sin(t * 1.8) * 0.015
+    }
+
+    if (sprayRef.current) {
+      drops.forEach((drop, index) => {
+        const wave = (Math.sin(t * drop.speed + drop.phase) + 1) * 0.5
+        const spread = drop.radius + wave * 0.46
+        dummy.position.set(
+          Math.cos(drop.angle + t * 0.08) * spread,
+          0.52 + Math.sin(wave * Math.PI) * drop.height,
+          Math.sin(drop.angle + t * 0.08) * spread,
+        )
+        dummy.scale.setScalar(drop.size * (0.65 + wave * 0.6))
+        dummy.updateMatrix()
+        sprayRef.current.setMatrixAt(index, dummy.matrix)
+      })
+      sprayRef.current.instanceMatrix.needsUpdate = true
+    }
+
+    if (lightRef.current) {
+      const cycle = getCycleState(t)
+      lightRef.current.intensity = 0.3 + cycle.nightAmount * 0.9
+    }
+  })
+
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.18, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[2.45, 2.75, 0.36, 48]} />
+        <meshToonMaterial color="#d7c28b" />
+      </mesh>
+      <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[1.78, 1.95, 0.3, 48]} />
+        <meshToonMaterial color="#f0dca2" />
+      </mesh>
+      <mesh ref={waterRef} position={[0, 0.58, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[1.55, 64]} />
+        <meshPhysicalMaterial color="#5fc1c6" roughness={0.22} metalness={0} transparent opacity={0.74} transmission={0.15} />
+      </mesh>
+      <mesh position={[0, 1.0, 0]} castShadow>
+        <cylinderGeometry args={[0.3, 0.48, 0.88, 28]} />
+        <meshToonMaterial color="#d5bd82" />
+      </mesh>
+      <mesh position={[0, 1.54, 0]} castShadow>
+        <sphereGeometry args={[0.33, 24, 16]} />
+        <meshToonMaterial color="#f1dfa7" />
+      </mesh>
+      <instancedMesh ref={sprayRef} args={[null, null, drops.length]} frustumCulled={false}>
+        <sphereGeometry args={[1, 8, 6]} />
+        <meshBasicMaterial color="#d9fbff" transparent opacity={0.66} depthWrite={false} toneMapped={false} />
+      </instancedMesh>
+      <pointLight ref={lightRef} position={[0, 1.8, 0]} color="#b9f7ff" intensity={0.35} distance={5.5} />
     </group>
   )
 }
@@ -1026,6 +1261,47 @@ function DistantTreeLine() {
         <meshToonMaterial color="#1b6d52" />
       </instancedMesh>
     </group>
+  )
+}
+
+function FarForestBands() {
+  const ref = useRef()
+  const trees = useMemo(
+    () =>
+      Array.from({ length: 120 }, (_, index) => {
+        const band = index % 4
+        const along = randomAt(index + 2100)
+        const offset = -52 + randomAt(index + 2101) * 104
+        const position =
+          band === 0
+            ? [offset, 0.05, -58 - along * 10]
+            : band === 1
+              ? [offset, 0.05, 48 + along * 18]
+              : band === 2
+                ? [-54 - along * 10, 0.05, offset * 0.88]
+                : [54 + along * 10, 0.05, offset * 0.88]
+        return {
+          position,
+          scale: 0.85 + randomAt(index + 2102) * 1.55,
+          rotation: randomAt(index + 2103) * Math.PI,
+          color: randomAt(index + 2104) > 0.5 ? '#185f49' : '#247251',
+        }
+      }),
+    [],
+  )
+
+  useInstancedTransforms(ref, trees, ({ position, scale, rotation, color }, dummy, colorTarget) => {
+    dummy.position.set(position[0], 0.78 * scale, position[2])
+    dummy.rotation.set(0, rotation, 0)
+    dummy.scale.set(0.62 * scale, 1.55 * scale, 0.62 * scale)
+    colorTarget.set(color)
+  })
+
+  return (
+    <instancedMesh ref={ref} args={[null, null, trees.length]} frustumCulled={false} receiveShadow>
+      <coneGeometry args={[1, 1, 7]} />
+      <meshToonMaterial color="#1d6d4f" />
+    </instancedMesh>
   )
 }
 
@@ -1106,9 +1382,10 @@ function GroundPaint() {
 
 function GrassField() {
   const ref = useRef()
+  const dummy = useMemo(() => new THREE.Object3D(), [])
   const blades = useMemo(
     () =>
-      Array.from({ length: 1850 }, (_, index) => {
+      Array.from({ length: 1650 }, (_, index) => {
         const side = randomAt(index) > 0.5 ? 1 : -1
         const x = side * (2.8 + randomAt(index + 1) * 22.5)
         const z = -34.5 + randomAt(index + 2) * 66
@@ -1117,27 +1394,59 @@ function GrassField() {
           height,
           rotation: randomAt(index + 4) * Math.PI,
           lean: THREE.MathUtils.degToRad(-10 + randomAt(index + 6) * 20),
-          color: randomAt(index + 5) > 0.62 ? palette.grassLight : randomAt(index + 8) > 0.45 ? palette.grassWarm : palette.grassDark,
-          width: 0.045 + randomAt(index + 7) * 0.055,
+          wind: 0.65 + randomAt(index + 5) * 1.4,
+          phase: randomAt(index + 6) * Math.PI * 2,
+          width: 0.08 + randomAt(index + 7) * 0.11,
           position: [x, height * 0.5 + 0.035, z],
         }
       }),
     [],
   )
 
-  useInstancedTransforms(ref, blades, ({ position, rotation, lean, width, height, color }, dummy, colorTarget) => {
-    dummy.position.set(...position)
-    dummy.rotation.set(0, rotation, lean)
-    dummy.scale.set(width, height, 0.035)
-    colorTarget.set(color)
+  useFrame(({ clock }) => {
+    if (!ref.current) return
+
+    const t = clock.elapsedTime
+    blades.forEach((blade, index) => {
+      const gust = Math.sin(t * blade.wind + blade.phase) * 0.18 + Math.sin(t * 0.42 + blade.position[0]) * 0.08
+      dummy.position.set(...blade.position)
+      dummy.rotation.set(gust * 0.28, blade.rotation, blade.lean + gust)
+      dummy.scale.set(blade.width, blade.height, blade.width)
+      dummy.updateMatrix()
+      ref.current.setMatrixAt(index, dummy.matrix)
+    })
+    ref.current.instanceMatrix.needsUpdate = true
   })
 
   return (
     <instancedMesh ref={ref} args={[null, null, blades.length]} frustumCulled={false}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshBasicMaterial color="#226f50" />
+      <GrassBladeGeometry />
+      <meshLambertMaterial color="#31935a" side={THREE.DoubleSide} />
     </instancedMesh>
   )
+}
+
+function GrassBladeGeometry() {
+  const geometry = useMemo(() => {
+    const blade = new THREE.BufferGeometry()
+    blade.setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute([
+        -0.5, -0.5, 0,
+        0.5, -0.5, 0,
+        -0.34, 0.05, 0.04,
+        0.34, 0.05, 0.04,
+        -0.13, 0.5, 0.1,
+        0.13, 0.5, 0.1,
+        0, 0.74, 0.18,
+      ], 3),
+    )
+    blade.setIndex([0, 1, 2, 1, 3, 2, 2, 3, 4, 3, 5, 4, 4, 5, 6])
+    blade.computeVertexNormals()
+    return blade
+  }, [])
+
+  return <primitive object={geometry} attach="geometry" />
 }
 
 function PathPebbles() {
@@ -1304,7 +1613,7 @@ function Fireflies() {
       ref.current.setMatrixAt(index, dummy.matrix)
     })
 
-    materialRef.current.opacity = cycle.nightAmount * (0.36 + Math.sin(t * 2.4) * 0.08)
+    materialRef.current.opacity = cycle.nightAmount * (0.28 + Math.sin(t * 2.4) * 0.06)
     ref.current.instanceMatrix.needsUpdate = true
   })
 
@@ -1316,6 +1625,54 @@ function Fireflies() {
   )
 }
 
+function FireflyLightPool() {
+  const lights = useRef([])
+  const anchors = useMemo(
+    () => [
+      [-9, 1.8, -3, 0.4],
+      [8, 1.6, 4.5, 1.7],
+      [-7.5, 1.7, 12.5, 2.6],
+      [9.5, 1.5, -12.5, 3.4],
+      [0, 2.0, 16.5, 4.2],
+    ],
+    [],
+  )
+
+  useFrame(({ clock }) => {
+    const cycle = getCycleState(clock.elapsedTime)
+    const t = clock.elapsedTime
+
+    lights.current.forEach((light, index) => {
+      if (!light) return
+
+      const [x, y, z, phase] = anchors[index]
+      light.position.set(
+        x + Math.sin(t * 0.6 + phase) * 1.2,
+        y + Math.sin(t * 1.4 + phase) * 0.32,
+        z + Math.cos(t * 0.55 + phase) * 1.2,
+      )
+      light.intensity = cycle.nightAmount * (0.28 + Math.sin(t * 2.6 + phase) * 0.08)
+    })
+  })
+
+  return (
+    <group>
+      {anchors.map((anchor, index) => (
+        <pointLight
+          key={anchor.join('-')}
+          ref={(node) => {
+            lights.current[index] = node
+          }}
+          color="#fff0a4"
+          intensity={0}
+          distance={4.8}
+          decay={2.4}
+        />
+      ))}
+    </group>
+  )
+}
+
 function useInstancedTransforms(ref, items, applyTransform) {
   useLayoutEffect(() => {
     if (!ref.current) return
@@ -1324,15 +1681,18 @@ function useInstancedTransforms(ref, items, applyTransform) {
     const color = new THREE.Color()
 
     items.forEach((item, index) => {
+      color.set('#ffffff')
       dummy.position.set(0, 0, 0)
       dummy.rotation.set(0, 0, 0)
       dummy.scale.set(1, 1, 1)
       applyTransform(item, dummy, color, index)
       dummy.updateMatrix()
       ref.current.setMatrixAt(index, dummy.matrix)
+      ref.current.setColorAt(index, color)
     })
 
     ref.current.instanceMatrix.needsUpdate = true
+    ref.current.instanceColor.needsUpdate = true
     if (Array.isArray(ref.current.material)) {
       ref.current.material.forEach((material) => {
         material.needsUpdate = true
@@ -1383,20 +1743,33 @@ function Hill({ color, ...props }) {
 }
 
 function Cloud({ position, scale = 1, color = '#ffe7d2', shadowColor = '#d99a82' }) {
+  const ref = useRef()
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return
+    ref.current.position.x = position[0] + Math.sin(clock.elapsedTime * 0.035 + position[2]) * 0.32
+  })
+
   return (
-    <group position={position} scale={scale}>
+    <group ref={ref} position={position} scale={scale}>
       {[
-        [-1.18, -0.08, 0, 0.9, shadowColor],
-        [-0.62, 0.05, 0, 1.1, color],
-        [0.12, 0.2, 0, 1.38, color],
-        [0.94, 0.04, 0, 1.02, color],
-        [0.18, -0.2, 0, 1.22, shadowColor],
-      ].map(([x, y, z, size, cloudColor]) => (
-        <mesh key={`${x}-${y}`} position={[x, y, z]} scale={[size * 1.35, size * 0.62, 0.32]}>
-          <sphereGeometry args={[1, 16, 8]} />
-          <meshBasicMaterial color={cloudColor} />
+        [-1.35, -0.18, -0.04, 0.88, shadowColor],
+        [-0.86, 0.02, 0.02, 1.08, color],
+        [-0.25, 0.22, 0, 1.36, color],
+        [0.45, 0.14, -0.02, 1.2, color],
+        [1.1, -0.02, 0.04, 0.98, color],
+        [0.12, -0.26, 0.02, 1.4, shadowColor],
+        [0.78, -0.24, -0.04, 0.82, shadowColor],
+      ].map(([x, y, z, size, cloudColor], index) => (
+        <mesh key={`${x}-${y}`} position={[x, y, z]} scale={[size * 1.42, size * (0.42 + index * 0.015), 0.34]}>
+          <sphereGeometry args={[1, 24, 12]} />
+          <meshToonMaterial color={cloudColor} />
         </mesh>
       ))}
+      <mesh position={[0, -0.36, 0]} scale={[2.8, 0.12, 0.22]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshToonMaterial color={shadowColor} />
+      </mesh>
     </group>
   )
 }
@@ -1750,6 +2123,53 @@ function StringLights() {
   )
 }
 
+function LightArchways() {
+  return (
+    <group>
+      {[-12.4, -5.6, 1.5, 8.8].map((z, index) => (
+        <LightArch key={z} z={z} offset={index} />
+      ))}
+    </group>
+  )
+}
+
+function LightArch({ z, offset }) {
+  const lightRef = useRef()
+
+  useFrame(({ clock }) => {
+    if (!lightRef.current) return
+
+    const cycle = getCycleState(clock.elapsedTime)
+    lightRef.current.intensity = cycle.lampAmount * (0.8 + Math.sin(clock.elapsedTime * 3.8 + offset) * 0.06)
+  })
+
+  return (
+    <group position={[0, 0, z]}>
+      {[-3.45, 3.45].map((x) => (
+        <group key={x} position={[x, 0, 0]}>
+          <mesh position={[0, 1.55, 0]} castShadow receiveShadow>
+            <cylinderGeometry args={[0.08, 0.12, 3.1, 10]} />
+            <meshToonMaterial color="#3c4253" />
+          </mesh>
+          <mesh position={[0, 0.09, 0]} castShadow receiveShadow>
+            <cylinderGeometry args={[0.28, 0.34, 0.18, 12]} />
+            <meshToonMaterial color="#70604b" />
+          </mesh>
+          <mesh position={[x > 0 ? -0.22 : 0.22, 2.82, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+            <cylinderGeometry args={[0.045, 0.045, 0.46, 10]} />
+            <meshToonMaterial color="#3c4253" />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 2.95, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+        <cylinderGeometry args={[0.04, 0.04, 6.95, 10]} />
+        <meshToonMaterial color="#4b4653" />
+      </mesh>
+      <pointLight ref={lightRef} position={[0, 2.5, 0]} color="#ffd58b" intensity={0} distance={7.5} decay={2.2} />
+    </group>
+  )
+}
+
 function StringLightBulb({ color, offset }) {
   const materialRef = useRef()
   const glowRef = useRef()
@@ -1760,7 +2180,7 @@ function StringLightBulb({ color, offset }) {
     const cycle = getCycleState(clock.elapsedTime)
     const pulse = 0.9 + Math.sin(clock.elapsedTime * 4.4 + offset) * 0.1
     materialRef.current.opacity = 0.38 + cycle.lampAmount * 0.58 * pulse
-    glowRef.current.opacity = cycle.lampAmount * 0.15 * pulse
+    glowRef.current.opacity = cycle.lampAmount * 0.08 * pulse
   })
 
   return (
@@ -1769,7 +2189,7 @@ function StringLightBulb({ color, offset }) {
         <sphereGeometry args={[0.09, 12, 8]} />
         <meshBasicMaterial ref={materialRef} color={color} transparent opacity={0.7} toneMapped={false} />
       </mesh>
-      <mesh scale={2.4}>
+      <mesh scale={1.65}>
         <sphereGeometry args={[0.09, 12, 8]} />
         <meshBasicMaterial ref={glowRef} color={color} transparent opacity={0.04} depthWrite={false} toneMapped={false} />
       </mesh>
@@ -2121,65 +2541,51 @@ function TimelineGate() {
   )
 }
 
-function ProjectPanel({ exhibit, allExhibits, showIndex, close, open }) {
+function PauseMenu({ resume }) {
   return (
-    <section className="project-panel" aria-label={showIndex ? 'Project index' : exhibit?.title}>
+    <section className="pause-panel" aria-label="Pause menu">
+      <p className="eyebrow">Paused</p>
+      <h2>Пауза</h2>
+      <p>Мир остановлен только для управления: можно вернуться в прогулку через Escape или кнопку ниже.</p>
+      <button type="button" onClick={resume}>
+        Вернуться в игру
+      </button>
+    </section>
+  )
+}
+
+function ProjectPanel({ exhibit, close }) {
+  return (
+    <section className="project-panel" aria-label={exhibit?.title}>
       <button className="icon-button close-button" type="button" onClick={close} aria-label="Close panel">
         <X size={20} />
       </button>
 
-      {showIndex ? (
-        <>
-          <p className="eyebrow">Alley index</p>
-          <h2>Маршрут по аллее</h2>
-          <div className="index-grid">
-            {allExhibits.map((item) => {
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="index-item"
-                  style={{ '--accent': item.accent }}
-                  onClick={() => open(item.id)}
-                >
-                  <Icon size={18} />
-                  <span>{item.title}</span>
-                  <small>{item.type}</small>
-                </button>
-              )
-            })}
-          </div>
-        </>
-      ) : (
-        <>
-          <p className="eyebrow" style={{ color: exhibit.accent }}>
-            {exhibit.room}
-          </p>
-          <h2>{exhibit.title}</h2>
-          <p className="panel-summary">{exhibit.summary}</p>
+      <p className="eyebrow" style={{ color: exhibit.accent }}>
+        {exhibit.room}
+      </p>
+      <h2>{exhibit.title}</h2>
+      <p className="panel-summary">{exhibit.summary}</p>
 
-          <div className="panel-section">
-            <h3>Что показать</h3>
-            <ul>
-              {exhibit.todo.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
+      <div className="panel-section">
+        <h3>Что показать</h3>
+        <ul>
+          {exhibit.todo.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
 
-          <div className="skill-row">
-            {exhibit.skills.map((skill) => (
-              <span key={skill}>{skill}</span>
-            ))}
-          </div>
+      <div className="skill-row">
+        {exhibit.skills.map((skill) => (
+          <span key={skill}>{skill}</span>
+        ))}
+      </div>
 
-          <div className="media-placeholder" style={{ '--accent': exhibit.accent }}>
-            <Box size={24} />
-            <span>сюда добавим фото, видео, звук, ссылки или 3D-объект</span>
-          </div>
-        </>
-      )}
+      <div className="media-placeholder" style={{ '--accent': exhibit.accent }}>
+        <Box size={24} />
+        <span>сюда добавим фото, видео, звук, ссылки или 3D-объект</span>
+      </div>
     </section>
   )
 }
