@@ -389,7 +389,7 @@ function App() {
         performance={{ min: 0.72 }}
         onCreated={({ gl }) => {
           gl.shadowMap.enabled = true
-          gl.shadowMap.type = THREE.PCFSoftShadowMap
+          gl.shadowMap.type = THREE.PCFShadowMap
           gl.toneMapping = THREE.ACESFilmicToneMapping
           gl.toneMappingExposure = 1.06
         }}
