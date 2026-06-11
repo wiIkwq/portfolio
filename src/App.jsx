@@ -51,84 +51,375 @@ const palette = {
 
 const exhibits = [
   {
+    id: 'profile',
+    kind: 'exhibit',
+    title: 'Bohdan Profile',
+    type: 'old portfolio, CV, contact',
+    room: 'profile board near the main path',
+    accent: '#facc15',
+    position: [-5.8, 1.15, -13.2],
+    icon: Info,
+    summary:
+      'Old portfolio data: Bohdan Ihnatenko, VG2 IT student in Trondelag. Interested in web development, IT operations, accessibility, backend, and system administration.',
+    skills: ['HTML 70%', 'CSS 60%', 'JavaScript 60%', 'Python 99%', 'Linux / Git 80%'],
+    todo: [
+      'Education: Levanger VGS IT 2025-now, IM 2024-2025, Mykolaiv Polytechnic 2021-2025, Verdal VGS 2023-2024.',
+      'Experience: Kiwi Moan 2025-now, Namsskogan Familiepark 2023-2024, freelance PC technician 2023-now.',
+      'Contact: bohdan@bohdan.lol, +47 900 97 565, Verdal, Norway.',
+    ],
+  },
+  {
     id: 'integro',
+    kind: 'exhibit',
     title: 'Integro Core',
-    type: 'главный проект',
-    room: 'главный павильон аллеи',
+    type: 'main project',
+    room: 'main garden pavilion',
     accent: '#2dd4bf',
     position: [0, 1.25, -13.5],
     icon: Braces,
     summary:
-      'Центральный павильон для Integro: идея, путь разработки, интерфейсы, архитектура, демо и ссылки.',
+      'The main pavilion for Integro: product idea, architecture, interface decisions, demo links, and development notes.',
     skills: ['Product thinking', 'Frontend', 'AI workflows', 'System design'],
-    todo: ['добавить историю проекта', 'подставить скриншоты', 'прикрепить демо/репозиторий'],
+    todo: ['add full project story', 'attach screenshots', 'link demo and repository'],
   },
   {
     id: 'code',
     title: 'Code Terminal',
-    type: 'код, сайты, моды, GitHub',
-    room: 'стенд у левой тропинки',
+    kind: 'exhibit',
+    type: 'code, websites, mods, GitHub',
+    room: 'left path stand',
     accent: '#60a5fa',
     position: [-5.8, 1.15, -7.2],
     icon: GitBranch,
     summary:
-      'Стенд для технических проектов: сайты, эксперименты, моды, репозитории и заметки о том, как они собирались.',
-    skills: ['React', 'JavaScript', 'GitHub', 'Game modding'],
-    todo: ['список репозиториев', 'короткие кейсы', 'ссылки на живые версии'],
+      'Technical work from the old portfolio: web development, Linux/Git practice, school projects, experiments, and repositories.',
+    skills: ['HTML 70%', 'CSS 60%', 'JavaScript 60%', 'Linux / Git 80%'],
+    todo: ['add repository list', 'write short case studies', 'link live versions'],
   },
   {
     id: 'hardware',
     title: 'Build Bench',
-    type: 'сборка ПК и железо',
-    room: 'верстак у мастерской',
+    kind: 'exhibit',
+    type: 'PC building and IT operations',
+    room: 'workshop bench',
     accent: '#f59e0b',
     position: [5.9, 1.15, -3.8],
     icon: Cpu,
     summary:
-      'Верстак для истории сборки компьютера: комплектующие, почему выбрал именно их, процесс, фото и апгрейды.',
-    skills: ['PC building', 'Troubleshooting', 'Hardware planning', 'Setup design'],
-    todo: ['фото сборки', 'список комплектующих', 'что улучшал после запуска'],
+      'Hardware and operations corner: PC building, Linux servers, troubleshooting, docking stations, monitors, and workstation setup.',
+    skills: ['PC building', 'Troubleshooting', 'Linux servers', 'Workstation setup'],
+    todo: ['add build photos', 'list components', 'document upgrades and fixes'],
   },
   {
     id: 'sound',
     title: 'Sound Lab',
-    type: 'музыка и Suno',
-    room: 'музыкальная поляна',
+    kind: 'exhibit',
+    type: 'music and Suno',
+    room: 'music clearing',
     accent: '#a3e635',
     position: [-6.2, 1.15, 2.6],
     icon: Headphones,
     summary:
-      'Здесь будут треки, промпты, обложки, версии песен и то, как ты экспериментировал со звучанием.',
+      'A place for tracks, prompts, covers, versions, and notes about how each sound experiment evolved.',
     skills: ['Prompting', 'Music direction', 'Iteration', 'Cover art'],
-    todo: ['аудио-файлы', 'обложки', 'короткое описание каждого трека'],
+    todo: ['add audio files', 'add covers', 'write a short note for each track'],
   },
   {
     id: 'video',
     title: 'Edit Room',
-    type: 'трейлеры и Adobe',
-    room: 'экран под деревьями',
+    kind: 'exhibit',
+    type: 'trailers and Adobe',
+    room: 'screen under the trees',
     accent: '#fb7185',
     position: [6.4, 1.15, 5.5],
     icon: Film,
     summary:
-      'Уличный экран для трейлеров, монтажных экспериментов, шотов до/после, таймлайнов и финальных видео.',
+      'An outdoor screen for trailers, editing experiments, before/after shots, timelines, and final videos.',
     skills: ['Adobe Premiere', 'Trailer pacing', 'Visual rhythm', 'Story editing'],
-    todo: ['видео', 'превью', 'описать задачу и финальный результат'],
+    todo: ['add videos', 'add thumbnails', 'describe the goal and final result'],
   },
   {
     id: 'experiments',
     title: 'Notes Tree',
-    type: 'мелкие эксперименты',
-    room: 'дерево записок',
+    kind: 'exhibit',
+    type: 'small experiments',
+    room: 'notes tree',
     accent: '#c084fc',
     position: [-5.7, 1.15, 10.6],
     icon: FolderKanban,
     summary:
-      'Дерево для маленьких вещей, которые обычно теряются: тесты, идеи, странные прототипы, быстрые попытки и черновики.',
-    skills: ['Prototyping', 'Creative direction', 'Learning logs', 'Rapid iteration'],
-    todo: ['собрать мелкие факты', 'разделить по темам', 'добавить пасхалки'],
+      'The old portfolio profile data lives here too: VG2 IT student in Trondelag, interested in web development, IT operations, accessibility, backend, and system administration.',
+    skills: ['Python 99%', 'Java 50%', 'Languages: NO / EN / RU / UA / PL beginner', 'Driver license: B / AM'],
+    todo: ['add small experiments', 'group by topic', 'add hidden details'],
   },
 ]
+
+const practiceLogs = [
+  {
+    id: 'practice-2025-09-05',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#7dd3fc',
+    position: [13.8, 0.92, 2.2],
+    date: 'Sep 5, 2025',
+    born: 'Sep 5, 2025 08:30',
+    died: 'Sep 5, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Intro day at the ICT department with building tour, tool overview, loaner PC reinstall work, and time for personal projects.',
+    todo: [
+      'Met the people working that day.',
+      'Got a building tour and an overview of tools such as Azure, Apple School Manager, Teams, and RDP.',
+      'Reinstalled three loaner PCs from scratch.',
+      'Used quiet periods for personal projects.',
+    ],
+    skills: ['Azure', 'Apple School Manager', 'RDP', 'Windows reinstall'],
+  },
+  {
+    id: 'practice-2025-09-12',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#f0abfc',
+    position: [17.0, 0.92, 2.2],
+    date: 'Sep 12, 2025',
+    born: 'Sep 12, 2025 08:30',
+    died: 'Sep 12, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Hardware day with RAM upgrade, docking station software, and a full dual-monitor workspace setup.',
+    todo: [
+      'Replaced and upgraded RAM in a laptop.',
+      'Installed new software on a docking station.',
+      'Used some free time for personal tasks.',
+      'Set up a new workspace with mounts, two monitors, docking station, and required equipment.',
+    ],
+    skills: ['RAM upgrade', 'Docking station', 'Monitor setup', 'Cable work'],
+  },
+  {
+    id: 'practice-2025-09-19',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#86efac',
+    position: [20.2, 0.92, 2.2],
+    date: 'Sep 19, 2025',
+    born: 'Sep 19, 2025 08:30',
+    died: 'Sep 19, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'A calmer day with cable cleanup, desk setup, and docking station driver testing.',
+    todo: [
+      'Worked mostly on the PC and personal tasks because there was little activity.',
+      'Helped clean up cables and set up a new desk.',
+      'Updated docking station drivers and tested that everything worked.',
+    ],
+    skills: ['Driver updates', 'Desk setup', 'Testing'],
+  },
+  {
+    id: 'practice-2025-09-26',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#fde68a',
+    position: [13.8, 0.92, 6.0],
+    date: 'Sep 26, 2025',
+    born: 'Sep 26, 2025 08:30',
+    died: 'Sep 26, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Quiet practice day with laptop cleaning and small office cable work.',
+    todo: [
+      'Worked mostly on personal projects and watched some YouTube during low activity.',
+      'Cleaned a laptop and removed dust from the fan.',
+      'Moved cables and tidied part of an office area.',
+    ],
+    skills: ['Laptop cleaning', 'Fan dust removal', 'Office setup'],
+  },
+  {
+    id: 'practice-2025-10-03',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#c4b5fd',
+    position: [17.0, 0.92, 6.0],
+    date: 'Oct 3, 2025',
+    born: 'Oct 3, 2025 08:30',
+    died: 'Oct 3, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Driver update and monitor troubleshooting, plus keyboard and cable assistance.',
+    todo: [
+      'Mostly worked at the PC on personal things.',
+      'Updated drivers and tested a monitor that was not working correctly.',
+      'Helped connect a keyboard and organize cables under a desk.',
+    ],
+    skills: ['Monitor testing', 'Driver updates', 'Keyboard setup'],
+  },
+  {
+    id: 'practice-2025-10-10',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#fdba74',
+    position: [20.2, 0.92, 6.0],
+    date: 'Oct 10, 2025',
+    born: 'Oct 10, 2025 08:30',
+    died: 'Oct 10, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'A calm day with docking station setup, monitors, and desk cleanup.',
+    todo: [
+      'Spent most of the day at the PC doing personal tasks.',
+      'Helped connect a new docking station and monitors.',
+      'Moved cables and cleaned up the desk afterward.',
+    ],
+    skills: ['Docking station', 'Monitor setup', 'Cable cleanup'],
+  },
+  {
+    id: 'practice-2025-10-17',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#93c5fd',
+    position: [13.8, 0.92, 9.8],
+    date: 'Oct 17, 2025',
+    born: 'Oct 17, 2025 08:30',
+    died: 'Oct 17, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Laptop fan cleaning, monitor relocation, and cable setup at a new workstation.',
+    todo: [
+      'Mostly worked on personal projects because there was not much activity.',
+      'Opened a laptop and cleaned dust from the fan.',
+      'Moved a monitor and helped organize cables at a new workstation.',
+    ],
+    skills: ['Laptop maintenance', 'Monitor relocation', 'Cable setup'],
+  },
+  {
+    id: 'practice-2025-10-24',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#f9a8d4',
+    position: [17.0, 0.92, 9.8],
+    date: 'Oct 24, 2025',
+    born: 'Oct 24, 2025 08:30',
+    died: 'Oct 24, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Quiet practice day with docking station driver updates and cable cleanup.',
+    todo: [
+      'Mostly stayed at the PC, watched videos, and worked on personal projects.',
+      'Updated drivers on a docking station.',
+      'Helped clean up cables around a workstation.',
+    ],
+    skills: ['Driver updates', 'Cable cleanup', 'Workstation support'],
+  },
+  {
+    id: 'practice-2025-10-31',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#a7f3d0',
+    position: [20.2, 0.92, 9.8],
+    date: 'Oct 31, 2025',
+    born: 'Oct 31, 2025 08:30',
+    died: 'Oct 31, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Low-activity day with monitor connection help, desk cleanup, and a short mentor check-in.',
+    todo: [
+      'Mostly stayed at the PC, watched YouTube, and worked on personal tasks.',
+      'Helped connect a monitor and clean up a desk.',
+      'Had a short conversation with the mentor before leaving.',
+    ],
+    skills: ['Monitor connection', 'Desk cleanup', 'Mentor sync'],
+  },
+  {
+    id: 'practice-2025-11-07',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#d1d5db',
+    position: [13.8, 0.92, 13.6],
+    date: 'Nov 7, 2025',
+    born: 'Nov 7, 2025',
+    died: 'Absent',
+    duration: 'away',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Marked absent on the old practice log.',
+    todo: ['Away from practice.'],
+    skills: ['Absent'],
+  },
+  {
+    id: 'practice-2025-11-14',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#67e8f9',
+    position: [17.0, 0.92, 13.6],
+    date: 'Nov 14, 2025',
+    born: 'Nov 14, 2025 08:30',
+    died: 'Nov 14, 2025 14:10',
+    duration: '5h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Three-monitor workstation setup plus a county operations Teams meeting.',
+    todo: [
+      'Mounted and set up three new monitors at a workstation.',
+      'Joined a Teams meeting dedicated to operations, arranged by the county.',
+      'Used the remaining time for some personal work.',
+    ],
+    skills: ['Triple monitor setup', 'Operations meeting', 'Workspace setup'],
+  },
+  {
+    id: 'practice-2025-11-21',
+    kind: 'practice',
+    title: 'John Doe',
+    type: 'practice log',
+    room: 'Practice Log cemetery',
+    accent: '#fca5a5',
+    position: [20.2, 0.92, 13.6],
+    date: 'Nov 21, 2025',
+    born: 'Nov 21, 2025 10:30',
+    died: 'Nov 21, 2025 14:10',
+    duration: '3h 40m',
+    place: 'Fylkets hus, Steinkjer - ICT department',
+    address: 'Strandvegen 19, 7713 Steinkjer',
+    summary: 'Late arrival due to bus issues, then MAC address lookup and PXE installation for a dental health PC.',
+    todo: [
+      'Arrived later because the bus did not come and the next one had to be used.',
+      'Checked the MAC address of a PC that needed preparation.',
+      'Installed the system via PXE on a dental health PC.',
+    ],
+    skills: ['MAC address lookup', 'PXE install', 'Tannhelse PC'],
+  },
+]
+
+const interactiveItems = [...exhibits, ...practiceLogs]
 
 const keys = {
   KeyW: 'forward',
@@ -149,9 +440,9 @@ const WORLD_LIMITS = {
 }
 
 const COLLISION_CIRCLES = [
-  { x: 0, z: 7.8, radius: 2.65 },
   { x: 8.9, z: -13.2, radius: 3.2 },
   { x: 0, z: -17.2, radius: 2.1 },
+  { x: 9.8, z: 0, radius: 1.1 },
   { x: -13, z: -20, radius: 5.4 },
   { x: 13, z: -18, radius: 6.1 },
   { x: -18, z: 14, radius: 5.8 },
@@ -172,6 +463,11 @@ const COLLISION_CIRCLES = [
     x: exhibit.position[0],
     z: exhibit.position[2],
     radius: exhibit.id === 'integro' ? 1.75 : 1.35,
+  })),
+  ...practiceLogs.map((log) => ({
+    x: log.position[0],
+    z: log.position[2],
+    radius: 0.58,
   })),
 ]
 
@@ -300,8 +596,8 @@ function App() {
   const hasEnteredRef = useRef(hasEntered)
   const isPausedRef = useRef(isPaused)
 
-  const focusedExhibit = exhibits.find((item) => item.id === focusedId)
-  const activeExhibit = exhibits.find((item) => item.id === activeId)
+  const focusedItem = interactiveItems.find((item) => item.id === focusedId)
+  const activeItem = interactiveItems.find((item) => item.id === activeId)
 
   useEffect(() => {
     activeIdRef.current = activeId
@@ -417,58 +713,62 @@ function App() {
           <header className="topbar">
             <div>
               <p className="eyebrow">Creator Garden Alley</p>
-              <h1>Portfolio Prototype</h1>
+              <h1>Bohdan Portfolio</h1>
             </div>
           </header>
 
           <aside className="controls-panel" aria-label="Controls">
             <div>
               <MousePointer2 size={16} />
-              <span>WASD ходьба</span>
+              <span>WASD move</span>
             </div>
             <div>
               <Info size={16} />
-              <span>{isLocked ? 'мышь обзор' : 'drag мышью обзор'}</span>
+              <span>{isLocked ? 'mouse look' : 'drag to look'}</span>
             </div>
             <div>
               <Info size={16} />
-              <span>E открыть экспонат</span>
+              <span>E open focused item</span>
             </div>
           </aside>
 
         </>
       )}
 
-      {focusedExhibit && hasEntered && !activeExhibit && !isPaused && (
+      {focusedItem && hasEntered && !activeItem && !isPaused && (
         <div className="focus-prompt">
-          <span style={{ '--accent': focusedExhibit.accent }}>{focusedExhibit.title}</span>
+          <span style={{ '--accent': focusedItem.accent }}>{focusedItem.title}</span>
           <kbd>E</kbd>
         </div>
+      )}
+
+      {focusedItem?.kind === 'practice' && hasEntered && !activeItem && !isPaused && (
+        <PracticePreview log={focusedItem} />
       )}
 
       {!hasEntered && (
         <section className="entry-overlay" aria-label="Enter alley">
           <div>
             <p className="eyebrow">Desktop prototype</p>
-            <h2>Аллея твоих проектов</h2>
+            <h2>Your project garden</h2>
             <p>
-              Теперь это не тёмный музей, а мультяшная прогулочная аллея: стенды, записки,
-              деревья, мастерская и точки, куда потом подставим реальные истории.
+              A desktop-only playable portfolio: walk through project stands, the workshop,
+              the notes tree, and the new Practice Log cemetery pulled from the old portfolio.
             </p>
             <button type="button" onClick={enterMuseum}>
-              Войти в аллею
+              Enter the garden
             </button>
           </div>
         </section>
       )}
 
-      {isPaused && hasEntered && !activeExhibit && (
+      {isPaused && hasEntered && !activeItem && (
         <PauseMenu resume={resumeGame} />
       )}
 
-      {activeExhibit && (
+      {activeItem && (
         <ProjectPanel
-          exhibit={activeExhibit}
+          item={activeItem}
           close={() => {
             setActiveId(null)
             try {
@@ -486,7 +786,7 @@ function App() {
       <div className="mobile-block">
         <div>
           <h2>Desktop only prototype</h2>
-          <p>Открой на компьютере: эта версия сделана под мышь, клавиатуру и широкий экран.</p>
+          <p>Open it on a computer: this build is made for keyboard, mouse, and a wide screen.</p>
         </div>
       </div>
     </main>
@@ -506,6 +806,7 @@ function MuseumScene({ setFocusedId, openExhibit, isPaused }) {
 
       <OutdoorAlley />
       <WelcomeStudio />
+      <PracticeLogArea openExhibit={openExhibit} />
 
       {exhibits.map((exhibit) => (
         <Exhibit key={exhibit.id} exhibit={exhibit} openExhibit={openExhibit} />
@@ -946,14 +1247,27 @@ function PlayerRig({ setFocusedId, openExhibit, isPaused }) {
     let focused = null
     let score = 0.78
 
-    exhibits.forEach((exhibit) => {
-      const toTarget = targetVector.current.set(...exhibit.position).sub(camera.position)
+    practiceLogs.forEach((log) => {
+      const toTarget = targetVector.current.set(...log.position).sub(camera.position)
+      const distance = toTarget.length()
+      const candidateScore = 1.18 - distance * 0.08
+
+      if (distance < 4.4 && candidateScore > score) {
+        focused = log.id
+        score = candidateScore
+      }
+    })
+
+    interactiveItems.forEach((item) => {
+      if (item.kind === 'practice') return
+
+      const toTarget = targetVector.current.set(...item.position).sub(camera.position)
       const distance = toTarget.length()
       const directionScore = forward.dot(toTarget.normalize())
       const candidateScore = directionScore - distance * 0.04
 
       if (distance < 5.1 && directionScore > 0.72 && candidateScore > score) {
-        focused = exhibit.id
+        focused = item.id
         score = candidateScore
       }
     })
@@ -995,7 +1309,7 @@ function OutdoorAlley() {
         <circleGeometry args={[4.3, 48]} />
         <meshToonMaterial color="#b99355" />
       </mesh>
-      <Fountain position={[0, 0, 7.8]} />
+      <CentralGlade position={[0, 0, 7.8]} />
 
       <PathBrushStrokes />
       <GrassField />
@@ -1117,81 +1431,220 @@ function DistantWorld() {
   )
 }
 
-function Fountain({ position }) {
-  const waterRef = useRef()
-  const sprayRef = useRef()
-  const lightRef = useRef()
-  const dummy = useMemo(() => new THREE.Object3D(), [])
-  const drops = useMemo(
-    () =>
-      Array.from({ length: 54 }, (_, index) => ({
-        angle: (index / 54) * Math.PI * 2,
-        radius: 0.18 + randomAt(index + 1800) * 0.52,
-        height: 0.8 + randomAt(index + 1801) * 1.05,
-        speed: 0.75 + randomAt(index + 1802) * 1.5,
-        phase: randomAt(index + 1803) * Math.PI * 2,
-        size: 0.025 + randomAt(index + 1804) * 0.035,
-      })),
-    [],
+function CentralGlade({ position }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.075, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[2.4, 64]} />
+        <meshToonMaterial color="#d7b66f" />
+      </mesh>
+      <mesh position={[0, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0.4]} receiveShadow>
+        <ringGeometry args={[1.35, 2.05, 64]} />
+        <meshToonMaterial color="#f2d78f" />
+      </mesh>
+      <mesh position={[0, 0.18, 0]} scale={[0.82, 0.22, 0.82]} castShadow receiveShadow>
+        <dodecahedronGeometry args={[1, 1]} />
+        <meshToonMaterial color="#6b7d69" />
+      </mesh>
+      {Array.from({ length: 14 }, (_, index) => {
+        const angle = (index / 14) * Math.PI * 2
+        const radius = 1.5 + randomAt(index + 2300) * 0.34
+        const color = index % 3 === 0 ? '#ffdf6f' : index % 3 === 1 ? '#9edb75' : '#f4a261'
+
+        return (
+          <group key={index} position={[Math.cos(angle) * radius, 0.08, Math.sin(angle) * radius]}>
+            <mesh position={[0, 0.2, 0]} castShadow>
+              <cylinderGeometry args={[0.018, 0.026, 0.4, 6]} />
+              <meshToonMaterial color="#2f8a4f" />
+            </mesh>
+            <mesh position={[0, 0.43, 0]} scale={0.12}>
+              <sphereGeometry args={[1, 10, 6]} />
+              <meshToonMaterial color={color} />
+            </mesh>
+          </group>
+        )
+      })}
+    </group>
   )
+}
+
+function PracticeLogArea({ openExhibit }) {
+  return (
+    <group>
+      <mesh position={[7.25, 0.071, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
+        <planeGeometry args={[3.25, 10.4, 4, 1]} />
+        <meshToonMaterial color="#b99558" />
+      </mesh>
+      <mesh position={[15.8, 0.055, 8.0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[11.4, 17.8, 6, 8]} />
+        <meshToonMaterial color="#235844" />
+      </mesh>
+      <mesh position={[15.8, 0.073, 8.0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[10.2, 16.5, 6, 8]} />
+        <meshBasicMaterial color="#193d38" transparent opacity={0.28} depthWrite={false} />
+      </mesh>
+
+      <PracticePortal position={[9.8, 0, 0]} />
+
+      {practiceLogs.map((log) => (
+        <Tombstone key={log.id} log={log} openExhibit={openExhibit} />
+      ))}
+
+      <FutureGraves />
+      <CemeteryDetails />
+    </group>
+  )
+}
+
+function PracticePortal({ position }) {
+  const ringRef = useRef()
+  const innerRef = useRef()
+  const lightRef = useRef()
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
+    const cycle = getCycleState(t)
+    const pulse = 0.82 + Math.sin(t * 2.8) * 0.18
 
-    if (waterRef.current) {
-      waterRef.current.rotation.z = t * 0.16
-      waterRef.current.position.y = 0.19 + Math.sin(t * 1.8) * 0.015
+    if (ringRef.current) {
+      ringRef.current.rotation.z = Math.sin(t * 0.55) * 0.08
     }
-
-    if (sprayRef.current) {
-      drops.forEach((drop, index) => {
-        const wave = (Math.sin(t * drop.speed + drop.phase) + 1) * 0.5
-        const spread = drop.radius + wave * 0.46
-        dummy.position.set(
-          Math.cos(drop.angle + t * 0.08) * spread,
-          0.52 + Math.sin(wave * Math.PI) * drop.height,
-          Math.sin(drop.angle + t * 0.08) * spread,
-        )
-        dummy.scale.setScalar(drop.size * (0.65 + wave * 0.6))
-        dummy.updateMatrix()
-        sprayRef.current.setMatrixAt(index, dummy.matrix)
-      })
-      sprayRef.current.instanceMatrix.needsUpdate = true
+    if (innerRef.current) {
+      innerRef.current.opacity = 0.18 + pulse * 0.14
     }
-
     if (lightRef.current) {
-      const cycle = getCycleState(t)
-      lightRef.current.intensity = 0.3 + cycle.nightAmount * 0.9
+      lightRef.current.intensity = 1.1 + cycle.lampAmount * 3.6 + pulse * 0.8
     }
   })
 
   return (
-    <group position={position}>
-      <mesh position={[0, 0.18, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[2.45, 2.75, 0.36, 48]} />
-        <meshToonMaterial color="#d7c28b" />
+    <group position={position} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[-1.45, 1.65, 0]} castShadow>
+        <cylinderGeometry args={[0.13, 0.18, 3.3, 14]} />
+        <meshToonMaterial color="#2d3147" />
       </mesh>
-      <mesh position={[0, 0.42, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[1.78, 1.95, 0.3, 48]} />
-        <meshToonMaterial color="#f0dca2" />
+      <mesh position={[1.45, 1.65, 0]} castShadow>
+        <cylinderGeometry args={[0.13, 0.18, 3.3, 14]} />
+        <meshToonMaterial color="#2d3147" />
       </mesh>
-      <mesh ref={waterRef} position={[0, 0.58, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[1.55, 64]} />
-        <meshPhysicalMaterial color="#5fc1c6" roughness={0.22} metalness={0} transparent opacity={0.74} transmission={0.15} />
+      <mesh position={[0, 3.18, 0]} castShadow>
+        <boxGeometry args={[3.55, 0.28, 0.28]} />
+        <meshToonMaterial color="#202638" />
       </mesh>
-      <mesh position={[0, 1.0, 0]} castShadow>
-        <cylinderGeometry args={[0.3, 0.48, 0.88, 28]} />
-        <meshToonMaterial color="#d5bd82" />
+      <mesh ref={ringRef} position={[0, 1.65, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[1.16, 0.055, 16, 96]} />
+        <meshBasicMaterial color="#76f7ff" transparent opacity={0.86} toneMapped={false} />
       </mesh>
-      <mesh position={[0, 1.54, 0]} castShadow>
-        <sphereGeometry args={[0.33, 24, 16]} />
-        <meshToonMaterial color="#f1dfa7" />
+      <mesh position={[0, 1.65, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[1.02, 64]} />
+        <meshBasicMaterial ref={innerRef} color="#955dff" transparent opacity={0.25} depthWrite={false} toneMapped={false} />
       </mesh>
-      <instancedMesh ref={sprayRef} args={[null, null, drops.length]} frustumCulled={false}>
-        <sphereGeometry args={[1, 8, 6]} />
-        <meshBasicMaterial color="#d9fbff" transparent opacity={0.66} depthWrite={false} toneMapped={false} />
-      </instancedMesh>
-      <pointLight ref={lightRef} position={[0, 1.8, 0]} color="#b9f7ff" intensity={0.35} distance={5.5} />
+      <Text position={[0, 3.24, 0.18]} fontSize={0.29} color="#bdfcff" anchorX="center" outlineWidth={0.018} outlineColor="#7c3aed">
+        Practice Log
+      </Text>
+      <Text position={[0, 2.83, 0.18]} fontSize={0.105} color="#fff7c2" anchorX="center">
+        walk close to read
+      </Text>
+      <pointLight ref={lightRef} position={[0, 1.9, 0.6]} color="#8aeaff" intensity={2.4} distance={9.5} decay={2.1} />
+    </group>
+  )
+}
+
+function Tombstone({ log, openExhibit }) {
+  const shape = useMemo(() => {
+    const tombstone = new THREE.Shape()
+    tombstone.moveTo(-0.64, -0.76)
+    tombstone.lineTo(-0.64, 0.2)
+    tombstone.absarc(0, 0.2, 0.64, Math.PI, 0, true)
+    tombstone.lineTo(0.64, -0.76)
+    tombstone.lineTo(-0.64, -0.76)
+    return tombstone
+  }, [])
+
+  return (
+    <group position={log.position} rotation={[0, -Math.PI / 2, 0]}>
+      <mesh position={[0, -0.85, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[1.02, 24]} />
+        <meshBasicMaterial color="#0f2d2a" transparent opacity={0.4} depthWrite={false} />
+      </mesh>
+      <mesh castShadow receiveShadow onClick={() => openExhibit(log.id)}>
+        <extrudeGeometry args={[shape, { depth: 0.22, bevelEnabled: true, bevelSize: 0.045, bevelThickness: 0.035, bevelSegments: 4 }]} />
+        <meshToonMaterial color="#a7aaa1" />
+      </mesh>
+      <mesh position={[0, -0.05, 0.245]}>
+        <boxGeometry args={[0.94, 0.04, 0.035]} />
+        <meshBasicMaterial color={log.accent} toneMapped={false} />
+      </mesh>
+      <Text position={[0, 0.12, 0.265]} fontSize={0.15} color="#182136" anchorX="center" anchorY="middle" maxWidth={1.05} textAlign="center">
+        {log.title}
+      </Text>
+      <Text position={[0, -0.17, 0.265]} fontSize={0.056} color="#2c3448" anchorX="center" anchorY="middle" maxWidth={1.0} textAlign="center">
+        BORN {log.born}
+      </Text>
+      <Text position={[0, -0.33, 0.265]} fontSize={0.056} color="#2c3448" anchorX="center" anchorY="middle" maxWidth={1.0} textAlign="center">
+        DIED {log.died}
+      </Text>
+      <Text position={[0, -0.55, 0.265]} fontSize={0.05} color="#516070" anchorX="center" anchorY="middle" maxWidth={0.96} textAlign="center">
+        {log.duration}
+      </Text>
+    </group>
+  )
+}
+
+function FutureGraves() {
+  const slots = [
+    [13.8, 0.06, 17.4],
+    [17.0, 0.06, 17.4],
+    [20.2, 0.06, 17.4],
+    [13.8, 0.06, 21.2],
+    [17.0, 0.06, 21.2],
+    [20.2, 0.06, 21.2],
+  ]
+
+  return (
+    <group>
+      {slots.map(([x, y, z], index) => (
+        <group key={`${x}-${z}`} position={[x, y, z]} rotation={[0, -Math.PI / 2, 0]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[1.65, 0.92]} />
+            <meshToonMaterial color={index % 2 === 0 ? '#284d3d' : '#203f37'} />
+          </mesh>
+          <mesh position={[0, 0.18, -0.35]} castShadow>
+            <boxGeometry args={[1.15, 0.18, 0.16]} />
+            <meshToonMaterial color="#4c514f" />
+          </mesh>
+          <Text position={[0, 0.36, -0.47]} fontSize={0.072} color="#a9b8a9" anchorX="center">
+            reserved
+          </Text>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function CemeteryDetails() {
+  return (
+    <group>
+      {[
+        [12.0, 0.16, 1.0, 0.34],
+        [21.8, 0.16, 4.5, 0.28],
+        [12.2, 0.16, 12.8, 0.3],
+        [21.5, 0.16, 15.8, 0.26],
+        [15.2, 0.14, 19.4, 0.22],
+      ].map(([x, y, z, scale]) => (
+        <mesh key={`${x}-${z}`} position={[x, y, z]} scale={[scale * 1.35, scale * 0.52, scale]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[1, 0]} />
+          <meshToonMaterial color="#5a625e" />
+        </mesh>
+      ))}
+      {[
+        [12.2, 0, 3.6, 0.82],
+        [22.1, 0, 8.2, 0.94],
+        [12.4, 0, 16.4, 0.78],
+        [21.6, 0, 20.0, 0.72],
+      ].map(([x, y, z, scale]) => (
+        <Bush key={`${x}-${z}`} position={[x, y, z]} scale={scale} />
+      ))}
     </group>
   )
 }
@@ -2545,46 +2998,69 @@ function PauseMenu({ resume }) {
   return (
     <section className="pause-panel" aria-label="Pause menu">
       <p className="eyebrow">Paused</p>
-      <h2>Пауза</h2>
-      <p>Мир остановлен только для управления: можно вернуться в прогулку через Escape или кнопку ниже.</p>
+      <h2>Paused</h2>
+      <p>The world is paused for navigation. Press Escape again or use the button below to return.</p>
       <button type="button" onClick={resume}>
-        Вернуться в игру
+        Return to game
       </button>
     </section>
   )
 }
 
-function ProjectPanel({ exhibit, close }) {
+function PracticePreview({ log }) {
   return (
-    <section className="project-panel" aria-label={exhibit?.title}>
+    <aside className="practice-preview" aria-label="Practice preview" style={{ '--accent': log.accent }}>
+      <p className="eyebrow">Practice Log</p>
+      <h2>{log.date}</h2>
+      <strong>{log.title}</strong>
+      <p>{log.summary}</p>
+      <small>{log.place}</small>
+    </aside>
+  )
+}
+
+function ProjectPanel({ item, close }) {
+  const isPractice = item.kind === 'practice'
+
+  return (
+    <section className="project-panel" aria-label={item?.title}>
       <button className="icon-button close-button" type="button" onClick={close} aria-label="Close panel">
         <X size={20} />
       </button>
 
-      <p className="eyebrow" style={{ color: exhibit.accent }}>
-        {exhibit.room}
+      <p className="eyebrow" style={{ color: item.accent }}>
+        {item.room}
       </p>
-      <h2>{exhibit.title}</h2>
-      <p className="panel-summary">{exhibit.summary}</p>
+      <h2>{isPractice ? `${item.title} - ${item.date}` : item.title}</h2>
+      <p className="panel-summary">{item.summary}</p>
+
+      {isPractice && (
+        <div className="practice-epitaph">
+          <span>Born: {item.born}</span>
+          <span>Died: {item.died}</span>
+          <span>{item.duration} at {item.place}</span>
+          <small>{item.address}</small>
+        </div>
+      )}
 
       <div className="panel-section">
-        <h3>Что показать</h3>
+        <h3>{isPractice ? 'What happened' : 'What to add'}</h3>
         <ul>
-          {exhibit.todo.map((item) => (
-            <li key={item}>{item}</li>
+          {item.todo.map((task) => (
+            <li key={task}>{task}</li>
           ))}
         </ul>
       </div>
 
       <div className="skill-row">
-        {exhibit.skills.map((skill) => (
+        {item.skills.map((skill) => (
           <span key={skill}>{skill}</span>
         ))}
       </div>
 
-      <div className="media-placeholder" style={{ '--accent': exhibit.accent }}>
+      <div className="media-placeholder" style={{ '--accent': item.accent }}>
         <Box size={24} />
-        <span>сюда добавим фото, видео, звук, ссылки или 3D-объект</span>
+        <span>{isPractice ? 'future slot for photos, files, or mentor notes' : 'future slot for photos, video, audio, links, or a 3D object'}</span>
       </div>
     </section>
   )
