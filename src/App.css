@@ -1,6 +1,7 @@
 :root {
   --world-night: 0;
   --world-sunset: 0.8;
+  --world-eclipse: 0;
 }
 
 .museum-app {
@@ -19,8 +20,8 @@
   display: block;
   filter:
     saturate(calc(0.92 + var(--world-sunset) * 0.18 - var(--world-night) * 0.12))
-    contrast(calc(1.08 + var(--world-night) * 0.08))
-    brightness(calc(0.98 - var(--world-night) * 0.18 + var(--world-sunset) * 0.05));
+    contrast(calc(1.08 + var(--world-night) * 0.08 + var(--world-eclipse) * 0.08))
+    brightness(calc(0.98 - var(--world-night) * 0.18 + var(--world-sunset) * 0.05 - var(--world-eclipse) * 0.2));
 }
 
 .topbar {
@@ -153,7 +154,8 @@ button {
   background:
     linear-gradient(90deg, rgba(255, 222, 158, 0.1), transparent 14%, transparent 86%, rgba(255, 222, 158, 0.1)),
     radial-gradient(circle at 50% 78%, rgba(255, 193, 109, calc(0.1 + var(--world-sunset) * 0.18)), transparent 36%),
-    radial-gradient(circle at 50% 42%, rgba(78, 128, 202, calc(var(--world-night) * 0.16)), transparent 58%);
+    radial-gradient(circle at 50% 42%, rgba(78, 128, 202, calc(var(--world-night) * 0.16)), transparent 58%),
+    radial-gradient(circle at 50% 18%, rgba(15, 18, 45, calc(var(--world-eclipse) * 0.32)), transparent 42%);
   opacity: 0.74;
 }
 
@@ -316,19 +318,26 @@ kbd {
   place-items: center;
   padding: 32px;
   background:
-    radial-gradient(circle at 34% 22%, rgba(255, 187, 101, 0.26), transparent 34%),
-    linear-gradient(180deg, rgba(91, 155, 201, 0.22), rgba(65, 118, 80, 0.5));
+    radial-gradient(circle at 22% 18%, rgba(255, 231, 161, 0.38), transparent 32%),
+    radial-gradient(circle at 78% 76%, rgba(91, 229, 255, 0.24), transparent 34%),
+    linear-gradient(180deg, rgba(24, 68, 88, 0.62), rgba(27, 74, 50, 0.7));
 }
 
 .entry-overlay > div {
   width: min(620px, 100%);
   position: relative;
-  padding: 30px 30px 28px;
+  overflow: hidden;
+  padding: 34px 34px 30px;
   border: 2px solid rgba(255, 249, 217, 0.86);
   border-radius: 8px;
-  background: linear-gradient(145deg, rgba(255, 236, 196, 0.88), rgba(226, 214, 163, 0.74));
-  box-shadow: 0 24px 80px rgba(44, 96, 43, 0.25);
+  background:
+    linear-gradient(145deg, rgba(255, 239, 205, 0.94), rgba(224, 214, 166, 0.86)),
+    radial-gradient(circle at 82% 12%, rgba(98, 232, 255, 0.22), transparent 34%);
+  box-shadow:
+    0 24px 80px rgba(20, 45, 38, 0.34),
+    0 0 70px rgba(111, 231, 247, 0.14);
   backdrop-filter: blur(16px);
+  animation: entry-rise 560ms cubic-bezier(0.2, 0.82, 0.2, 1) both;
 }
 
 .entry-overlay > div::before {
@@ -338,6 +347,20 @@ kbd {
   border: 1px solid rgba(53, 91, 83, 0.13);
   border-radius: 6px;
   pointer-events: none;
+}
+
+.entry-glow {
+  position: absolute;
+  top: -72px;
+  right: -54px;
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(116, 245, 255, 0.34), transparent 64%),
+    radial-gradient(circle at 34% 38%, rgba(255, 214, 131, 0.42), transparent 44%);
+  filter: blur(4px);
+  animation: entry-pulse 3.8s ease-in-out infinite;
 }
 
 .entry-overlay h2 {
@@ -356,11 +379,29 @@ kbd {
   line-height: 1.55;
 }
 
+.entry-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.entry-chips span {
+  padding: 7px 9px;
+  border: 1px solid rgba(65, 93, 84, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 252, 236, 0.52);
+  color: #26364d;
+  font-size: 12px;
+}
+
 .entry-overlay button {
   margin-top: 22px;
-  padding: 11px 15px;
-  background: rgba(70, 135, 86, 0.86);
+  padding: 12px 16px;
+  background:
+    linear-gradient(135deg, rgba(36, 121, 102, 0.95), rgba(38, 94, 134, 0.9));
   border-color: rgba(255, 249, 217, 0.95);
+  box-shadow: 0 12px 28px rgba(24, 73, 68, 0.22);
 }
 
 .project-panel {
@@ -394,6 +435,31 @@ kbd {
   color: #fff9d9;
   text-align: center;
   backdrop-filter: blur(10px);
+}
+
+@keyframes entry-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes entry-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.76;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 0.94;
+  }
 }
 
 .pause-panel h2 {

@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/immutability */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber'
 import {
   ContactShadows,
   Text,
@@ -10,10 +10,8 @@ import {
   Box,
   Braces,
   Cpu,
-  Film,
   FolderKanban,
   GitBranch,
-  Headphones,
   Info,
   MousePointer2,
   X,
@@ -49,108 +47,123 @@ const palette = {
   glow: '#ffe1a6',
 }
 
+const WorldPauseContext = createContext({ isPaused: false, timeRef: { current: 0 } })
+
+function useWorldRuntime() {
+  return useContext(WorldPauseContext)
+}
+
+function useWorldPaused() {
+  return useWorldRuntime().isPaused
+}
+
+function useSceneTime() {
+  return useWorldRuntime().timeRef
+}
+
 const exhibits = [
   {
     id: 'profile',
     kind: 'exhibit',
-    title: 'Bohdan Profile',
-    type: 'old portfolio, CV, contact',
-    room: 'profile board near the main path',
+    title: 'Bohdan Ihnatenko',
+    type: 'profile, goals, languages',
+    room: 'main profile stand',
     accent: '#facc15',
     position: [-5.8, 1.15, -13.2],
     icon: Info,
     summary:
-      'Old portfolio data: Bohdan Ihnatenko, VG2 IT student in Trondelag. Interested in web development, IT operations, accessibility, backend, and system administration.',
-    skills: ['HTML 70%', 'CSS 60%', 'JavaScript 60%', 'Python 99%', 'Linux / Git 80%'],
+      'IT student in Trondelag focused on web development, IT operations, universal design, backend work, and system administration.',
+    sectionTitle: 'Profile details',
+    skills: ['Born Jan 1, 2006', 'Verdal, Norway', 'Driver license B / AM', 'NO / EN / RU / UA / PL beginner'],
     todo: [
-      'Education: Levanger VGS IT 2025-now, IM 2024-2025, Mykolaiv Polytechnic 2021-2025, Verdal VGS 2023-2024.',
-      'Experience: Kiwi Moan 2025-now, Namsskogan Familiepark 2023-2024, freelance PC technician 2023-now.',
-      'Contact: bohdan@bohdan.lol, +47 900 97 565, Verdal, Norway.',
+      'Goal: become a system administrator or backend developer.',
+      'Interested in clean solutions, accessible interfaces, Linux servers, and reliable technical setups.',
+      'Portfolio identity: bohdan.lol, GitHub @wiIkwq, based in Verdal, Norway.',
     ],
+    mediaNote: 'real profile photos are placed as paper prints on the path',
   },
   {
-    id: 'integro',
+    id: 'skills',
     kind: 'exhibit',
-    title: 'Integro Core',
-    type: 'main project',
-    room: 'main garden pavilion',
+    title: 'Skills Matrix',
+    type: 'technical skill levels',
+    room: 'skills pavilion',
     accent: '#2dd4bf',
     position: [0, 1.25, -13.5],
     icon: Braces,
     summary:
-      'The main pavilion for Integro: product idea, architecture, interface decisions, demo links, and development notes.',
-    skills: ['Product thinking', 'Frontend', 'AI workflows', 'System design'],
-    todo: ['add full project story', 'attach screenshots', 'link demo and repository'],
+      'A compact version of the old portfolio skill chart: strong Python, solid Linux/Git, and active frontend practice.',
+    sectionTitle: 'Skill chart from the old portfolio',
+    skills: ['HTML 70%', 'CSS 60%', 'JavaScript 60%', 'Python 99%', 'Java 50%', 'Linux / Git 80%'],
+    todo: [
+      'Frontend: HTML, CSS, JavaScript, layout, responsive thinking, and accessibility basics.',
+      'Programming: Python as the strongest language, Java as additional school/project experience.',
+      'Operations: Linux, Git, server practice, PC troubleshooting, and workstation setup.',
+    ],
+    mediaNote: 'future slot for GitHub cards, demos, and before/after technical screenshots',
   },
   {
-    id: 'code',
-    title: 'Code Terminal',
+    id: 'education',
+    title: 'Education Timeline',
     kind: 'exhibit',
-    type: 'code, websites, mods, GitHub',
-    room: 'left path stand',
+    type: 'schools and IT path',
+    room: 'education stand',
     accent: '#60a5fa',
-    position: [-5.8, 1.15, -7.2],
-    icon: GitBranch,
-    summary:
-      'Technical work from the old portfolio: web development, Linux/Git practice, school projects, experiments, and repositories.',
-    skills: ['HTML 70%', 'CSS 60%', 'JavaScript 60%', 'Linux / Git 80%'],
-    todo: ['add repository list', 'write short case studies', 'link live versions'],
-  },
-  {
-    id: 'hardware',
-    title: 'Build Bench',
-    kind: 'exhibit',
-    type: 'PC building and IT operations',
-    room: 'workshop bench',
-    accent: '#f59e0b',
-    position: [5.9, 1.15, -3.8],
-    icon: Cpu,
-    summary:
-      'Hardware and operations corner: PC building, Linux servers, troubleshooting, docking stations, monitors, and workstation setup.',
-    skills: ['PC building', 'Troubleshooting', 'Linux servers', 'Workstation setup'],
-    todo: ['add build photos', 'list components', 'document upgrades and fixes'],
-  },
-  {
-    id: 'sound',
-    title: 'Sound Lab',
-    kind: 'exhibit',
-    type: 'music and Suno',
-    room: 'music clearing',
-    accent: '#a3e635',
-    position: [-6.2, 1.15, 2.6],
-    icon: Headphones,
-    summary:
-      'A place for tracks, prompts, covers, versions, and notes about how each sound experiment evolved.',
-    skills: ['Prompting', 'Music direction', 'Iteration', 'Cover art'],
-    todo: ['add audio files', 'add covers', 'write a short note for each track'],
-  },
-  {
-    id: 'video',
-    title: 'Edit Room',
-    kind: 'exhibit',
-    type: 'trailers and Adobe',
-    room: 'screen under the trees',
-    accent: '#fb7185',
-    position: [6.4, 1.15, 5.5],
-    icon: Film,
-    summary:
-      'An outdoor screen for trailers, editing experiments, before/after shots, timelines, and final videos.',
-    skills: ['Adobe Premiere', 'Trailer pacing', 'Visual rhythm', 'Story editing'],
-    todo: ['add videos', 'add thumbnails', 'describe the goal and final result'],
-  },
-  {
-    id: 'experiments',
-    title: 'Notes Tree',
-    kind: 'exhibit',
-    type: 'small experiments',
-    room: 'notes tree',
-    accent: '#c084fc',
-    position: [-5.7, 1.15, 10.6],
+    position: [-5.8, 1.15, -5.8],
     icon: FolderKanban,
     summary:
-      'The old portfolio profile data lives here too: VG2 IT student in Trondelag, interested in web development, IT operations, accessibility, backend, and system administration.',
-    skills: ['Python 99%', 'Java 50%', 'Languages: NO / EN / RU / UA / PL beginner', 'Driver license: B / AM'],
-    todo: ['add small experiments', 'group by topic', 'add hidden details'],
+      'The old portfolio education block rebuilt as a readable timeline, from Ukrainian IT studies to Norwegian IT education.',
+    sectionTitle: 'Education',
+    skills: ['Levanger VGS', 'Verdal VGS', 'Mykolaiv Polytechnic', 'IT and media production'],
+    todo: [
+      '2025-now: Information Technology VG2-VG3 at Levanger videregaende skole.',
+      '2024-2025: IM, IT and media production at Levanger VGS.',
+      '2021-2025: Information Technology, junior bachelor path, Mykolaiv polytekniske fagskole.',
+      '2023-2024: Grunnskole for minoritetsspraklige at Verdal VGS.',
+    ],
+    mediaNote: 'future slot for certificates, school projects, and timeline screenshots',
+  },
+  {
+    id: 'experience',
+    title: 'Experience Log',
+    kind: 'exhibit',
+    type: 'work and technical support',
+    room: 'experience stand',
+    accent: '#f59e0b',
+    position: [5.9, 1.15, -4.2],
+    icon: Cpu,
+    summary:
+      'Work history from the old portfolio: store work, amusement park shifts, hotel work, and freelance technical help.',
+    sectionTitle: 'Experience',
+    skills: ['Customer service', 'Shift lead substitute', 'Kitchen / reception', 'Freelance technician'],
+    todo: [
+      '2025-now: Butikkmedarbeider at Kiwi Moan, Levanger: customer service and daily store tasks.',
+      'Summer 2024: Fornoyelsesparkarbeider, shift leader substitute, Namsskogan Familiepark AS.',
+      'Summer 2023: Hotel worker in kitchen and reception, Namsskogan Familiepark AS.',
+      '2023-now: Freelance technician for PC builds, setup help, and technical problem solving.',
+    ],
+    mediaNote: 'future slot for work photos, hardware builds, and repair notes',
+  },
+  {
+    id: 'contact',
+    title: 'Contact Beacon',
+    kind: 'exhibit',
+    type: 'email, phone, links',
+    room: 'contact stand',
+    accent: '#a3e635',
+    position: [-5.7, 1.15, 8.5],
+    icon: GitBranch,
+    summary:
+      'Direct contact information from the old portfolio, kept as a clean in-world sign instead of a static web section.',
+    sectionTitle: 'Contact',
+    skills: ['bohdan@bohdan.lol', '+47 900 97 565', 'github.com/wiIkwq', 'bohdan.lol'],
+    todo: [
+      'Email: bohdan@bohdan.lol',
+      'Phone: +47 900 97 565',
+      'Website: https://bohdan.lol/',
+      'Address: Jernbanegata 14C, 7650 Verdal',
+    ],
+    mediaNote: 'future slot for social cards, QR codes, and downloadable CV',
   },
 ]
 
@@ -158,7 +171,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-09-05',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#7dd3fc',
@@ -181,7 +194,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-09-12',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#f0abfc',
@@ -204,7 +217,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-09-19',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#86efac',
@@ -226,7 +239,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-09-26',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#fde68a',
@@ -248,7 +261,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-10-03',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#c4b5fd',
@@ -270,7 +283,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-10-10',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#fdba74',
@@ -292,7 +305,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-10-17',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#93c5fd',
@@ -314,7 +327,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-10-24',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#f9a8d4',
@@ -336,7 +349,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-10-31',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#a7f3d0',
@@ -358,7 +371,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-11-07',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#d1d5db',
@@ -376,7 +389,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-11-14',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#67e8f9',
@@ -398,7 +411,7 @@ const practiceLogs = [
   {
     id: 'practice-2025-11-21',
     kind: 'practice',
-    title: 'John Doe',
+    title: 'Dill Doe',
     type: 'practice log',
     room: 'Practice Log cemetery',
     accent: '#fca5a5',
@@ -419,7 +432,19 @@ const practiceLogs = [
   },
 ]
 
-const interactiveItems = [...exhibits, ...practiceLogs]
+const allInteractiveItems = [...exhibits, ...practiceLogs]
+
+const GARDEN_PORTAL = {
+  position: [6.35, 0, 8.65],
+  radius: 1.35,
+  spawn: [16.85, 1.7, 15.6],
+}
+
+const PRACTICE_EXIT_PORTAL = {
+  position: [16.85, 0, 18.45],
+  radius: 1.35,
+  spawn: [4.8, 1.7, 10.9],
+}
 
 const keys = {
   KeyW: 'forward',
@@ -433,16 +458,24 @@ const DAY_LENGTH_SECONDS = 300
 const START_PHASE = 0.68
 const PLAYER_RADIUS = 0.48
 const WORLD_LIMITS = {
-  minX: -23.4,
-  maxX: 23.4,
-  minZ: -35.5,
-  maxZ: 29.5,
+  garden: {
+    minX: -23.4,
+    maxX: 23.4,
+    minZ: -35.5,
+    maxZ: 29.5,
+  },
+  practice: {
+    minX: 9.6,
+    maxX: 24.2,
+    minZ: -2.4,
+    maxZ: 24.6,
+  },
 }
 
-const COLLISION_CIRCLES = [
+const GARDEN_COLLISION_CIRCLES = [
   { x: 8.9, z: -13.2, radius: 3.2 },
   { x: 0, z: -17.2, radius: 2.1 },
-  { x: 9.8, z: 0, radius: 1.1 },
+  { x: GARDEN_PORTAL.position[0], z: GARDEN_PORTAL.position[2], radius: 0.85 },
   { x: -13, z: -20, radius: 5.4 },
   { x: 13, z: -18, radius: 6.1 },
   { x: -18, z: 14, radius: 5.8 },
@@ -462,14 +495,32 @@ const COLLISION_CIRCLES = [
   ...exhibits.map((exhibit) => ({
     x: exhibit.position[0],
     z: exhibit.position[2],
-    radius: exhibit.id === 'integro' ? 1.75 : 1.35,
+    radius: exhibit.id === 'skills' ? 1.75 : 1.35,
   })),
+]
+
+const PRACTICE_COLLISION_CIRCLES = [
+  { x: PRACTICE_EXIT_PORTAL.position[0], z: PRACTICE_EXIT_PORTAL.position[2], radius: 0.82 },
+  { x: 10.6, z: 2.2, radius: 1.2 },
+  { x: 23.2, z: 5.6, radius: 1.24 },
+  { x: 10.8, z: 16.2, radius: 1.1 },
+  { x: 22.9, z: 18.4, radius: 1.05 },
+  { x: 12.2, z: -0.8, radius: 1.3 },
+  { x: 22.1, z: -0.6, radius: 1.25 },
   ...practiceLogs.map((log) => ({
     x: log.position[0],
     z: log.position[2],
     radius: 0.58,
   })),
 ]
+
+function getInteractiveItemsForWorld(worldId) {
+  return worldId === 'practice' ? practiceLogs : exhibits
+}
+
+function getCollisionCircles(worldId) {
+  return worldId === 'practice' ? PRACTICE_COLLISION_CIRCLES : GARDEN_COLLISION_CIRCLES
+}
 
 const cycleColors = {
   dayTop: new THREE.Color('#63b7e5'),
@@ -535,7 +586,9 @@ function smoothstep(edge0, edge1, value) {
 }
 
 function getCycleState(elapsedTime) {
-  const phase = (elapsedTime / DAY_LENGTH_SECONDS + START_PHASE) % 1
+  const totalDays = elapsedTime / DAY_LENGTH_SECONDS + START_PHASE
+  const dayIndex = Math.floor(totalDays)
+  const phase = totalDays % 1
   const hour = phase * 24
   const sunAngle = phase * Math.PI * 2 - Math.PI / 2
   const sunX = Math.cos(sunAngle)
@@ -543,10 +596,13 @@ function getCycleState(elapsedTime) {
   const sunZ = -0.72 + Math.sin(sunAngle * 0.72) * 0.28
   const dayAmount = smoothstep(-0.08, 0.18, sunY)
   const nightAmount = 1 - smoothstep(-0.16, 0.18, sunY)
+  const eclipseWindow = smoothstep(0.43, 0.49, phase) * (1 - smoothstep(0.52, 0.58, phase))
+  const eclipseAmount = dayIndex % 3 === 2 ? eclipseWindow * dayAmount : 0
   const goldenAmount = clamp01(1 - Math.abs(sunY - 0.04) / 0.28) * (1 - nightAmount * 0.45)
-  const lampAmount = 1 - smoothstep(-0.12, 0.24, sunY)
+  const lampAmount = Math.max(1 - smoothstep(-0.12, 0.24, sunY), eclipseAmount * 0.88)
 
   return {
+    dayIndex,
     phase,
     hour,
     sunX,
@@ -558,16 +614,18 @@ function getCycleState(elapsedTime) {
     dayAmount,
     nightAmount,
     goldenAmount,
+    eclipseAmount,
     lampAmount,
-    exposure: 0.74 + dayAmount * 0.36 + goldenAmount * 0.08,
+    exposure: (0.74 + dayAmount * 0.36 + goldenAmount * 0.08) * (1 - eclipseAmount * 0.42),
   }
 }
 
-function resolvePlayerCollision(position) {
-  position.x = THREE.MathUtils.clamp(position.x, WORLD_LIMITS.minX, WORLD_LIMITS.maxX)
-  position.z = THREE.MathUtils.clamp(position.z, WORLD_LIMITS.minZ, WORLD_LIMITS.maxZ)
+function resolvePlayerCollision(position, worldId) {
+  const limits = WORLD_LIMITS[worldId] ?? WORLD_LIMITS.garden
+  position.x = THREE.MathUtils.clamp(position.x, limits.minX, limits.maxX)
+  position.z = THREE.MathUtils.clamp(position.z, limits.minZ, limits.maxZ)
 
-  COLLISION_CIRCLES.forEach(({ x, z, radius }) => {
+  getCollisionCircles(worldId).forEach(({ x, z, radius }) => {
     const dx = position.x - x
     const dz = position.z - z
     const distance = Math.hypot(dx, dz)
@@ -580,8 +638,12 @@ function resolvePlayerCollision(position) {
     }
   })
 
-  position.x = THREE.MathUtils.clamp(position.x, WORLD_LIMITS.minX, WORLD_LIMITS.maxX)
-  position.z = THREE.MathUtils.clamp(position.z, WORLD_LIMITS.minZ, WORLD_LIMITS.maxZ)
+  position.x = THREE.MathUtils.clamp(position.x, limits.minX, limits.maxX)
+  position.z = THREE.MathUtils.clamp(position.z, limits.minZ, limits.maxZ)
+}
+
+function horizontalDistance(position, target) {
+  return Math.hypot(position.x - target[0], position.z - target[2])
 }
 
 function App() {
@@ -589,15 +651,18 @@ function App() {
   const [focusedId, setFocusedId] = useState(null)
   const [activeId, setActiveId] = useState(null)
   const [isPaused, setIsPaused] = useState(false)
+  const [worldId, setWorldId] = useState('garden')
   const [hasEntered, setHasEntered] = useState(() =>
     new URLSearchParams(window.location.search).has('preview'),
   )
   const activeIdRef = useRef(activeId)
   const hasEnteredRef = useRef(hasEntered)
   const isPausedRef = useRef(isPaused)
+  const resumeLockRef = useRef(false)
+  const resumeLockTimerRef = useRef(null)
 
-  const focusedItem = interactiveItems.find((item) => item.id === focusedId)
-  const activeItem = interactiveItems.find((item) => item.id === activeId)
+  const focusedItem = allInteractiveItems.find((item) => item.id === focusedId)
+  const activeItem = allInteractiveItems.find((item) => item.id === activeId)
 
   useEffect(() => {
     activeIdRef.current = activeId
@@ -606,9 +671,29 @@ function App() {
   }, [activeId, hasEntered, isPaused])
 
   useEffect(() => {
+    return () => {
+      if (resumeLockTimerRef.current) {
+        window.clearTimeout(resumeLockTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     const onPointerLockChange = () => {
       const locked = Boolean(document.pointerLockElement)
       setIsLocked(locked)
+
+      if (locked) {
+        resumeLockRef.current = false
+        if (resumeLockTimerRef.current) {
+          window.clearTimeout(resumeLockTimerRef.current)
+          resumeLockTimerRef.current = null
+        }
+      }
+
+      if (!locked && resumeLockRef.current) {
+        return
+      }
 
       if (!locked && hasEnteredRef.current && !activeIdRef.current && !isPausedRef.current) {
         setIsPaused(true)
@@ -626,13 +711,23 @@ function App() {
   }, [activeId, isPaused])
 
   const requestGameFocus = useCallback(() => {
+    resumeLockRef.current = true
+    if (resumeLockTimerRef.current) {
+      window.clearTimeout(resumeLockTimerRef.current)
+    }
+    resumeLockTimerRef.current = window.setTimeout(() => {
+      resumeLockRef.current = false
+    }, 700)
+
     setIsPaused(false)
     try {
       const pointerLockRequest = document.body.requestPointerLock?.()
       pointerLockRequest?.catch?.(() => {
+        resumeLockRef.current = false
         setIsLocked(false)
       })
     } catch {
+      resumeLockRef.current = false
       setIsLocked(false)
     }
   }, [])
@@ -653,6 +748,7 @@ function App() {
 
         if (activeIdRef.current) {
           setActiveId(null)
+          resumeGame()
           return
         }
 
@@ -678,9 +774,10 @@ function App() {
   return (
     <main className="museum-app">
       <Canvas
-        shadows
+        shadows={{ type: THREE.PCFShadowMap }}
         camera={{ position: [0, 1.7, 15], rotation: [-0.48, 0, 0], fov: 68, near: 0.1, far: 120 }}
         dpr={[1, 1.35]}
+        frameloop={isPaused ? 'demand' : 'always'}
         gl={{ antialias: true, powerPreference: 'high-performance', stencil: false, alpha: false }}
         performance={{ min: 0.72 }}
         onCreated={({ gl }) => {
@@ -694,6 +791,8 @@ function App() {
           setFocusedId={setFocusedId}
           openExhibit={setActiveId}
           isPaused={isPaused}
+          worldId={worldId}
+          setWorldId={setWorldId}
         />
       </Canvas>
 
@@ -712,8 +811,8 @@ function App() {
 
           <header className="topbar">
             <div>
-              <p className="eyebrow">Creator Garden Alley</p>
-              <h1>Bohdan Portfolio</h1>
+              <p className="eyebrow">{worldId === 'practice' ? 'Practice Realm' : 'Creator Garden Alley'}</p>
+              <h1>{worldId === 'practice' ? 'Practice Log' : 'Bohdan Portfolio'}</h1>
             </div>
           </header>
 
@@ -749,12 +848,18 @@ function App() {
       {!hasEntered && (
         <section className="entry-overlay" aria-label="Enter alley">
           <div>
-            <p className="eyebrow">Desktop prototype</p>
-            <h2>Your project garden</h2>
+            <span className="entry-glow" aria-hidden="true" />
+            <p className="eyebrow">Desktop playable portfolio</p>
+            <h2>Bohdan Portfolio Garden</h2>
             <p>
-              A desktop-only playable portfolio: walk through project stands, the workshop,
-              the notes tree, and the new Practice Log cemetery pulled from the old portfolio.
+              Walk through a stylized garden built from the real old portfolio data, then step
+              through the neon portal into a separate Practice Log realm.
             </p>
+            <div className="entry-chips" aria-hidden="true">
+              <span>real CV stands</span>
+              <span>dynamic sky</span>
+              <span>separate practice realm</span>
+            </div>
             <button type="button" onClick={enterMuseum}>
               Enter the garden
             </button>
@@ -771,14 +876,7 @@ function App() {
           item={activeItem}
           close={() => {
             setActiveId(null)
-            try {
-              const pointerLockRequest = document.body.requestPointerLock?.()
-              pointerLockRequest?.catch?.(() => {
-                setIsLocked(false)
-              })
-            } catch {
-              setIsLocked(false)
-            }
+            requestGameFocus()
           }}
         />
       )}
@@ -793,26 +891,46 @@ function App() {
   )
 }
 
-function MuseumScene({ setFocusedId, openExhibit, isPaused }) {
+function MuseumScene({ setFocusedId, openExhibit, isPaused, worldId, setWorldId }) {
+  const timeRef = useRef(0)
+
+  useFrame((_, delta) => {
+    if (!isPaused) {
+      timeRef.current += Math.min(delta, 0.05)
+    }
+  })
+
   return (
-    <>
+    <WorldPauseContext.Provider value={{ isPaused, timeRef }}>
       <color attach="background" args={['#efaa7f']} />
       <fog attach="fog" args={[palette.fog, 18, 74]} />
 
       <SunsetSky />
       <WorldLighting />
 
-      <PlayerRig setFocusedId={setFocusedId} openExhibit={openExhibit} isPaused={isPaused} />
+      <PlayerRig
+        setFocusedId={setFocusedId}
+        openExhibit={openExhibit}
+        isPaused={isPaused}
+        worldId={worldId}
+        setWorldId={setWorldId}
+      />
 
-      <OutdoorAlley />
-      <WelcomeStudio />
-      <PracticeLogArea openExhibit={openExhibit} />
+      {worldId === 'garden' ? (
+        <>
+          <OutdoorAlley />
+          <WelcomeStudio />
 
-      {exhibits.map((exhibit) => (
-        <Exhibit key={exhibit.id} exhibit={exhibit} openExhibit={openExhibit} />
-      ))}
+          {exhibits.map((exhibit) => (
+            <Exhibit key={exhibit.id} exhibit={exhibit} openExhibit={openExhibit} />
+          ))}
 
-      <TimelineGate />
+          <TimelineGate />
+        </>
+      ) : (
+        <PracticeLogArea openExhibit={openExhibit} />
+      )}
+
       <ContactShadows
         position={[0, 0.035, 0]}
         opacity={0.34}
@@ -830,25 +948,29 @@ function MuseumScene({ setFocusedId, openExhibit, isPaused }) {
         <Vignette eskil={false} offset={0.14} darkness={0.36} />
       </EffectComposer>
 
-    </>
+    </WorldPauseContext.Provider>
   )
 }
 
 function WorldLighting() {
   const { gl, scene } = useThree()
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const ambientRef = useRef()
   const hemiRef = useRef()
   const sunRef = useRef()
   const moonRef = useRef()
   const fillRef = useRef()
   const hubRef = useRef()
-  const soundRef = useRef()
-  const videoRef = useRef()
+  const portalRef = useRef()
+  const pathRef = useRef()
   const lastCssUpdate = useRef(0)
   const fogColor = useMemo(() => new THREE.Color(), [])
   const sunColor = useMemo(() => new THREE.Color(), [])
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
+
     if (
       !sunRef.current ||
       !moonRef.current ||
@@ -856,14 +978,15 @@ function WorldLighting() {
       !hemiRef.current ||
       !fillRef.current ||
       !hubRef.current ||
-      !soundRef.current ||
-      !videoRef.current
+      !portalRef.current ||
+      !pathRef.current
     ) return
 
-    const cycle = getCycleState(clock.elapsedTime)
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
     const sunHeight = Math.max(cycle.sunY, -0.18)
-    const sunIntensity = cycle.dayAmount * 3.25 + cycle.goldenAmount * 2.2
-    const moonIntensity = cycle.nightAmount * 1.15
+    const sunIntensity = (cycle.dayAmount * 3.25 + cycle.goldenAmount * 2.2) * (1 - cycle.eclipseAmount * 0.86)
+    const moonIntensity = cycle.nightAmount * 1.15 + cycle.eclipseAmount * 0.45
 
     sunRef.current.position.set(cycle.sunX * 34, sunHeight * 34 + 3, cycle.sunZ * 34)
     sunRef.current.intensity = sunIntensity
@@ -873,25 +996,27 @@ function WorldLighting() {
     moonRef.current.position.set(cycle.moonX * 25, Math.max(cycle.moonY, 0.12) * 25 + 5, cycle.moonZ * 25)
     moonRef.current.intensity = moonIntensity
 
-    ambientRef.current.intensity = 0.14 + cycle.dayAmount * 0.34 + cycle.goldenAmount * 0.08
-    hemiRef.current.intensity = 0.28 + cycle.dayAmount * 0.92 + cycle.nightAmount * 0.28
-    fillRef.current.intensity = 0.22 + cycle.nightAmount * 0.42
+    ambientRef.current.intensity = (0.14 + cycle.dayAmount * 0.34 + cycle.goldenAmount * 0.08) * (1 - cycle.eclipseAmount * 0.48)
+    hemiRef.current.intensity = (0.28 + cycle.dayAmount * 0.92 + cycle.nightAmount * 0.28) * (1 - cycle.eclipseAmount * 0.58)
+    fillRef.current.intensity = 0.22 + cycle.nightAmount * 0.42 + cycle.eclipseAmount * 0.3
 
     hubRef.current.intensity = 1.1 + cycle.lampAmount * 2.4 + cycle.goldenAmount * 0.7
-    soundRef.current.intensity = 0.35 + cycle.lampAmount * 1.65
-    videoRef.current.intensity = 0.35 + cycle.lampAmount * 1.55
+    portalRef.current.intensity = 0.65 + cycle.lampAmount * 2.4 + cycle.eclipseAmount * 1.8
+    pathRef.current.intensity = 0.18 + cycle.lampAmount * 1.25
 
     fogColor.copy(cycleColors.fogNight).lerp(cycleColors.fogDay, cycle.dayAmount)
     fogColor.lerp(cycleColors.fogSunset, cycle.goldenAmount * 0.62)
+    fogColor.lerp(new THREE.Color('#171a2f'), cycle.eclipseAmount * 0.68)
     scene.fog.color.copy(fogColor)
     scene.fog.near = 17 - cycle.nightAmount * 4
-    scene.fog.far = 78 - cycle.nightAmount * 10
+    scene.fog.far = 78 - cycle.nightAmount * 10 - cycle.eclipseAmount * 16
     gl.toneMappingExposure = cycle.exposure
 
-    if (clock.elapsedTime - lastCssUpdate.current > 0.18) {
+    if (t - lastCssUpdate.current > 0.18) {
       document.documentElement.style.setProperty('--world-night', cycle.nightAmount.toFixed(3))
       document.documentElement.style.setProperty('--world-sunset', cycle.goldenAmount.toFixed(3))
-      lastCssUpdate.current = clock.elapsedTime
+      document.documentElement.style.setProperty('--world-eclipse', cycle.eclipseAmount.toFixed(3))
+      lastCssUpdate.current = t
     }
   })
 
@@ -905,31 +1030,37 @@ function WorldLighting() {
         intensity={4.7}
         color="#ffba74"
         castShadow
-        shadow-mapSize={2048}
-        shadow-bias={-0.00022}
-        shadow-normalBias={0.035}
-        shadow-camera-left={-34}
-        shadow-camera-right={34}
-        shadow-camera-top={34}
-        shadow-camera-bottom={-34}
+        shadow-mapSize={4096}
+        shadow-bias={-0.00008}
+        shadow-normalBias={0.045}
+        shadow-camera-left={-28}
+        shadow-camera-right={28}
+        shadow-camera-top={28}
+        shadow-camera-bottom={-28}
+        shadow-camera-near={0.5}
+        shadow-camera-far={72}
       />
       <directionalLight ref={moonRef} position={[10, 12, 8]} intensity={0.35} color={cycleColors.moonLight} />
       <directionalLight ref={fillRef} position={[8, 6, 10]} intensity={0.9} color="#6fbaff" />
       <pointLight ref={hubRef} position={[0, 4.4, -13]} color="#ffe2a0" intensity={4.2} distance={17} />
-      <pointLight ref={soundRef} position={[-5.8, 2.6, 2.6]} color="#e4ffc2" intensity={1.9} distance={9} />
-      <pointLight ref={videoRef} position={[6.4, 2.6, 5.5]} color="#ffc7a8" intensity={1.8} distance={9} />
+      <pointLight ref={portalRef} position={[GARDEN_PORTAL.position[0], 2.2, GARDEN_PORTAL.position[2]]} color="#7defff" intensity={1.9} distance={12} />
+      <pointLight ref={pathRef} position={[0, 2.8, 3.2]} color="#ffd58b" intensity={1.15} distance={18} />
     </>
   )
 }
 
 function SunsetSky() {
   const { camera } = useThree()
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const sunRef = useRef()
   const sunGlowRef = useRef()
   const moonRef = useRef()
+  const eclipseRef = useRef()
   const sunMaterialRef = useRef()
   const sunGlowMaterialRef = useRef()
   const moonMaterialRef = useRef()
+  const eclipseMaterialRef = useRef()
   const topColor = useMemo(() => new THREE.Color(), [])
   const midColor = useMemo(() => new THREE.Color(), [])
   const horizonColor = useMemo(() => new THREE.Color(), [])
@@ -942,6 +1073,9 @@ function SunsetSky() {
         groundColor: { value: new THREE.Color('#2f6d58') },
         sunDirection: { value: new THREE.Vector3(-0.55, 0.16, -0.82).normalize() },
         moonAmount: { value: 0 },
+        cloudAmount: { value: 0.5 },
+        eclipseAmount: { value: 0 },
+        time: { value: 0 },
       },
       vertexShader: `
         varying vec3 vWorldPosition;
@@ -959,7 +1093,36 @@ function SunsetSky() {
         uniform vec3 groundColor;
         uniform vec3 sunDirection;
         uniform float moonAmount;
+        uniform float cloudAmount;
+        uniform float eclipseAmount;
+        uniform float time;
         varying vec3 vWorldPosition;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          vec2 u = f * f * (3.0 - 2.0 * f);
+          return mix(
+            mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+            mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+            u.y
+          );
+        }
+
+        float fbm(vec2 p) {
+          float value = 0.0;
+          float amplitude = 0.5;
+          for (int i = 0; i < 4; i++) {
+            value += noise(p) * amplitude;
+            p *= 2.02;
+            amplitude *= 0.5;
+          }
+          return value;
+        }
 
         void main() {
           vec3 direction = normalize(vWorldPosition);
@@ -973,9 +1136,14 @@ function SunsetSky() {
           float halo = pow(max(dot(direction, sunDirection), 0.0), 18.0);
           sky += vec3(1.0, 0.48, 0.18) * halo * 0.34;
           sky += vec3(1.0, 0.82, 0.48) * sun * 1.2;
-          float stars = step(0.99998, fract(sin(dot(direction.xz * 420.0, vec2(12.9898, 78.233))) * 43758.5453));
-          stars *= smoothstep(0.32, 0.9, direction.y) * moonAmount * 0.035;
-          sky += vec3(0.75, 0.86, 1.0) * stars;
+
+          vec2 cloudUv = direction.xz * 2.15 + vec2(time * 0.006, -time * 0.003);
+          float highCloud = fbm(cloudUv * 2.4 + direction.y * 0.8);
+          float cloudMask = smoothstep(0.46, 0.76, highCloud) * smoothstep(0.22, 0.54, height) * (1.0 - smoothstep(0.88, 1.0, height));
+          vec3 cloudColor = mix(vec3(0.94, 0.98, 1.0), vec3(1.0, 0.66, 0.42), clamp(halo * 1.7, 0.0, 1.0));
+          cloudColor = mix(cloudColor, vec3(0.28, 0.34, 0.56), moonAmount * 0.55 + eclipseAmount * 0.52);
+          sky = mix(sky, cloudColor, cloudMask * cloudAmount * 0.42);
+          sky *= 1.0 - eclipseAmount * 0.48;
 
           gl_FragColor = vec4(sky, 1.0);
         }
@@ -984,38 +1152,50 @@ function SunsetSky() {
     [],
   )
 
-  useFrame(({ clock }) => {
-    if (!sunRef.current || !sunMaterialRef.current || !sunGlowRef.current || !moonRef.current) return
+  useFrame(() => {
+    if (isPaused) return
+    if (!sunRef.current || !sunMaterialRef.current || !sunGlowRef.current || !moonRef.current || !eclipseRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
     const material = sunMaterialRef.current
     const glowMaterial = sunGlowMaterialRef.current
     const moonMaterial = moonMaterialRef.current
+    const eclipseMaterial = eclipseMaterialRef.current
     const uniforms = skyMaterial.uniforms
 
     topColor.copy(cycleColors.nightTop).lerp(cycleColors.dayTop, cycle.dayAmount)
     topColor.lerp(cycleColors.sunsetTop, cycle.goldenAmount * 0.8)
+    topColor.lerp(new THREE.Color('#090d1d'), cycle.eclipseAmount * 0.72)
     midColor.copy(cycleColors.nightMid).lerp(cycleColors.dayMid, cycle.dayAmount)
     midColor.lerp(cycleColors.sunsetMid, cycle.goldenAmount * 0.88)
+    midColor.lerp(new THREE.Color('#20224a'), cycle.eclipseAmount * 0.62)
     horizonColor.copy(cycleColors.nightHorizon).lerp(cycleColors.dayHorizon, cycle.dayAmount)
     horizonColor.lerp(cycleColors.sunsetHorizon, cycle.goldenAmount * 0.9)
+    horizonColor.lerp(new THREE.Color('#46314e'), cycle.eclipseAmount * 0.52)
 
     uniforms.topColor.value.copy(topColor)
     uniforms.midColor.value.copy(midColor)
     uniforms.horizonColor.value.copy(horizonColor)
     uniforms.sunDirection.value.set(cycle.sunX, cycle.sunY, cycle.sunZ).normalize()
     uniforms.moonAmount.value = cycle.nightAmount
+    uniforms.cloudAmount.value = 0.5 + cycle.goldenAmount * 0.28 + cycle.eclipseAmount * 0.18
+    uniforms.eclipseAmount.value = cycle.eclipseAmount
+    uniforms.time.value = t
 
     sunRef.current.position.set(cycle.sunX * 70, cycle.sunY * 70, cycle.sunZ * 70)
     sunGlowRef.current.position.copy(sunRef.current.position)
     moonRef.current.position.set(cycle.moonX * 68, cycle.moonY * 68, cycle.moonZ * 68)
+    eclipseRef.current.position.copy(sunRef.current.position).add(new THREE.Vector3(0, 0, 0.8))
     sunRef.current.lookAt(camera.position)
     sunGlowRef.current.lookAt(camera.position)
     moonRef.current.lookAt(camera.position)
+    eclipseRef.current.lookAt(camera.position)
 
-    material.opacity = clamp01(cycle.dayAmount + cycle.goldenAmount * 0.65)
-    glowMaterial.opacity = clamp01(0.1 + cycle.goldenAmount * 0.28 + cycle.dayAmount * 0.08)
+    material.opacity = clamp01(cycle.dayAmount + cycle.goldenAmount * 0.65) * (1 - cycle.eclipseAmount * 0.38)
+    glowMaterial.opacity = clamp01(0.1 + cycle.goldenAmount * 0.28 + cycle.dayAmount * 0.08) * (1 - cycle.eclipseAmount * 0.72)
     moonMaterial.opacity = cycle.nightAmount * 0.85
+    eclipseMaterial.opacity = cycle.eclipseAmount * 0.96
   })
 
   return (
@@ -1043,6 +1223,10 @@ function SunsetSky() {
         <circleGeometry args={[3.4, 48]} />
         <meshBasicMaterial ref={moonMaterialRef} color="#d9e6ff" transparent opacity={0} depthWrite={false} toneMapped={false} />
       </mesh>
+      <mesh ref={eclipseRef} position={[-30, 12.8, -49]} renderOrder={-899}>
+        <circleGeometry args={[5.45, 64]} />
+        <meshBasicMaterial ref={eclipseMaterialRef} color="#090a15" transparent opacity={0} depthWrite={false} toneMapped={false} />
+      </mesh>
       <RealStarMap />
 
       <Cloud position={[-18, 9.5, -42]} scale={2.2} color="#ffe0c7" shadowColor="#d98d7a" />
@@ -1064,6 +1248,8 @@ function starToPosition({ az, alt }, radius = 82) {
 }
 
 function RealStarMap() {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const groupRef = useRef()
   const starMaterialRefs = useRef([])
   const lineMaterialRefs = useRef([])
@@ -1075,16 +1261,17 @@ function RealStarMap() {
     return map
   }, [])
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!groupRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
-    groupRef.current.rotation.y = clock.elapsedTime * 0.006
+    const cycle = getCycleState(sceneTime.current)
+    const starOpacity = Math.max(cycle.nightAmount, cycle.eclipseAmount * 0.55)
     starMaterialRefs.current.forEach((material) => {
-      if (material) material.opacity = cycle.nightAmount
+      if (material) material.opacity = starOpacity
     })
     lineMaterialRefs.current.forEach((material) => {
-      if (material) material.opacity = cycle.nightAmount * 0.34
+      if (material) material.opacity = starOpacity * 0.34
     })
   })
 
@@ -1133,8 +1320,9 @@ function RealStarMap() {
   )
 }
 
-function PlayerRig({ setFocusedId, openExhibit, isPaused }) {
+function PlayerRig({ setFocusedId, openExhibit, isPaused, worldId, setWorldId }) {
   const { camera } = useThree()
+  const sceneTime = useSceneTime()
   const pressed = useRef({})
   const velocity = useRef(new THREE.Vector3())
   const forwardVector = useRef(new THREE.Vector3())
@@ -1145,6 +1333,7 @@ function PlayerRig({ setFocusedId, openExhibit, isPaused }) {
   const isDragging = useRef(false)
   const yaw = useRef(0)
   const pitch = useRef(-0.48)
+  const portalCooldown = useRef(0)
 
   useEffect(() => {
     camera.rotation.order = 'YXZ'
@@ -1209,7 +1398,7 @@ function PlayerRig({ setFocusedId, openExhibit, isPaused }) {
     }
   }, [camera, isPaused, openExhibit])
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     if (isPaused) {
       velocity.current.set(0, 0, 0)
       return
@@ -1235,10 +1424,40 @@ function PlayerRig({ setFocusedId, openExhibit, isPaused }) {
 
     velocity.current.lerp(move, Math.min(delta * 12, 1))
     camera.position.addScaledVector(velocity.current, delta)
-    resolvePlayerCollision(camera.position)
+    resolvePlayerCollision(camera.position, worldId)
+
+    portalCooldown.current = Math.max(0, portalCooldown.current - delta)
+
+    if (portalCooldown.current <= 0 && worldId === 'garden' && horizontalDistance(camera.position, GARDEN_PORTAL.position) < GARDEN_PORTAL.radius) {
+      setWorldId('practice')
+      camera.position.set(...GARDEN_PORTAL.spawn)
+      yaw.current = Math.PI
+      pitch.current = -0.28
+      camera.rotation.set(pitch.current, yaw.current, 0)
+      velocity.current.set(0, 0, 0)
+      pressed.current = {}
+      lastFocus.current = null
+      setFocusedId(null)
+      portalCooldown.current = 1.2
+      return
+    }
+
+    if (portalCooldown.current <= 0 && worldId === 'practice' && horizontalDistance(camera.position, PRACTICE_EXIT_PORTAL.position) < PRACTICE_EXIT_PORTAL.radius) {
+      setWorldId('garden')
+      camera.position.set(...PRACTICE_EXIT_PORTAL.spawn)
+      yaw.current = -0.48
+      pitch.current = -0.36
+      camera.rotation.set(pitch.current, yaw.current, 0)
+      velocity.current.set(0, 0, 0)
+      pressed.current = {}
+      lastFocus.current = null
+      setFocusedId(null)
+      portalCooldown.current = 1.2
+      return
+    }
 
     const moveAmount = THREE.MathUtils.clamp(velocity.current.length() / speed, 0, 1)
-    const t = clock.elapsedTime
+    const t = sceneTime.current
     const bob = Math.sin(t * 9.2) * 0.038 * moveAmount
     const sway = Math.sin(t * 4.6) * 0.009 * moveAmount
     camera.position.y = 1.7 + bob
@@ -1247,19 +1466,18 @@ function PlayerRig({ setFocusedId, openExhibit, isPaused }) {
     let focused = null
     let score = 0.78
 
-    practiceLogs.forEach((log) => {
-      const toTarget = targetVector.current.set(...log.position).sub(camera.position)
-      const distance = toTarget.length()
-      const candidateScore = 1.18 - distance * 0.08
+    getInteractiveItemsForWorld(worldId).forEach((item) => {
+      if (item.kind === 'practice') {
+        const toTarget = targetVector.current.set(...item.position).sub(camera.position)
+        const distance = toTarget.length()
+        const candidateScore = 1.18 - distance * 0.08
 
-      if (distance < 4.4 && candidateScore > score) {
-        focused = log.id
-        score = candidateScore
+        if (distance < 4.4 && candidateScore > score) {
+          focused = item.id
+          score = candidateScore
+        }
+        return
       }
-    })
-
-    interactiveItems.forEach((item) => {
-      if (item.kind === 'practice') return
 
       const toTarget = targetVector.current.set(...item.position).sub(camera.position)
       const distance = toTarget.length()
@@ -1311,6 +1529,8 @@ function OutdoorAlley() {
       </mesh>
       <CentralGlade position={[0, 0, 7.8]} />
 
+      <PathNetwork />
+      <PathBlendEdges />
       <PathBrushStrokes />
       <GrassField />
       <PathPebbles />
@@ -1318,8 +1538,6 @@ function OutdoorAlley() {
       <FloatingMotes />
       <Fireflies />
       <FireflyLightPool />
-      <FenceLine side={-1} />
-      <FenceLine side={1} />
       <Cloud position={[-9, 8.7, -20]} scale={1.25} color="#ffe6cf" shadowColor="#dca082" />
       <Cloud position={[8, 7.7, -12]} scale={0.95} color="#f7d8c1" shadowColor="#c98e77" />
       <Cloud position={[3, 9.3, -26]} scale={0.9} color="#ffebd5" shadowColor="#d9a384" />
@@ -1383,8 +1601,112 @@ function OutdoorAlley() {
       <StringLights />
       <LightArchways />
       <DirectionBoard position={[-2.9, 0, -15.4]} rotation={[0, 0.12, 0]} />
+      <PracticePortal position={GARDEN_PORTAL.position} title="Practice Log" subtitle="step inside" />
+      <PortalGardenDetails />
       <PaperTrail />
       <Rocks />
+    </group>
+  )
+}
+
+function PathNetwork() {
+  const pathSegments = [
+    [-3.3, 0.064, -13.1, 3.4, 1.55, 0.04],
+    [-4.9, 0.064, -9.5, 2.25, 7.2, -0.08],
+    [-4.7, 0.064, -5.7, 2.1, 4.6, 0.24],
+    [4.7, 0.064, -5.9, 2.15, 6.7, -0.2],
+    [-4.6, 0.064, 8.4, 2.15, 7.1, 0.1],
+    [4.6, 0.064, 8.75, 2.4, 5.9, -0.44],
+    [6.0, 0.064, 8.58, 2.8, 2.2, Math.PI / 2],
+  ]
+
+  return (
+    <group>
+      {pathSegments.map(([x, y, z, width, length, rot]) => (
+        <mesh key={`${x}-${z}-${rot}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, rot]} receiveShadow>
+          <planeGeometry args={[width, length, 3, 8]} />
+          <meshToonMaterial color="#c79d5a" />
+        </mesh>
+      ))}
+      {[
+        [-5.8, 0.071, -13.2, 1.65],
+        [-5.8, 0.071, -5.8, 1.45],
+        [5.9, 0.071, -4.2, 1.55],
+        [-5.7, 0.071, 8.5, 1.45],
+        [6.35, 0.071, 8.65, 1.9],
+      ].map(([x, y, z, radius]) => (
+        <mesh key={`${x}-${z}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[radius, 44]} />
+          <meshToonMaterial color="#bf9252" />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function PathBlendEdges() {
+  const ref = useRef()
+  const edgePatches = useMemo(
+    () =>
+      Array.from({ length: 130 }, (_, index) => {
+        const row = index % 2 === 0 ? -1 : 1
+        const onBranch = index > 82
+        const baseZ = onBranch ? -14 + randomAt(index + 3200) * 28 : -31 + randomAt(index + 3201) * 58
+        const branchSide = randomAt(index + 3202) > 0.5 ? -1 : 1
+        const x = onBranch
+          ? branchSide * (3.2 + randomAt(index + 3203) * 3.4)
+          : row * (2.65 + randomAt(index + 3204) * 0.8)
+
+        return {
+          position: [x, 0.082, baseZ],
+          rotation: randomAt(index + 3205) * Math.PI,
+          scale: [0.42 + randomAt(index + 3206) * 0.95, 0.028, 0.12 + randomAt(index + 3207) * 0.24],
+          color: randomAt(index + 3208) > 0.45 ? '#85b85b' : '#5c9b52',
+        }
+      }),
+    [],
+  )
+
+  useInstancedTransforms(ref, edgePatches, ({ position, rotation, scale, color }, dummy, colorTarget) => {
+    dummy.position.set(...position)
+    dummy.rotation.set(0, rotation, 0)
+    dummy.scale.set(...scale)
+    colorTarget.set(color)
+  })
+
+  return (
+    <instancedMesh ref={ref} args={[null, null, edgePatches.length]} frustumCulled={false}>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshBasicMaterial color="#75a957" transparent opacity={0.78} />
+    </instancedMesh>
+  )
+}
+
+function PortalGardenDetails() {
+  return (
+    <group position={GARDEN_PORTAL.position}>
+      <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <ringGeometry args={[1.35, 2.25, 64]} />
+        <meshBasicMaterial color="#6ee7f7" transparent opacity={0.18} depthWrite={false} toneMapped={false} />
+      </mesh>
+      {[
+        [-1.9, 0.24, -1.05, 0.3, '#6b7065'],
+        [1.75, 0.2, 1.1, 0.24, '#545f5c'],
+        [-1.4, 0.18, 1.55, 0.22, '#76806f'],
+        [1.35, 0.16, -1.55, 0.2, '#677768'],
+      ].map(([x, y, z, scale, color]) => (
+        <mesh key={`${x}-${z}`} position={[x, y, z]} scale={[scale * 1.35, scale * 0.55, scale]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[1, 0]} />
+          <meshToonMaterial color={color} />
+        </mesh>
+      ))}
+      {[
+        [-2.15, 0, 0.15, 0.68],
+        [2.05, 0, -0.05, 0.62],
+        [0.3, 0, 2.2, 0.56],
+      ].map(([x, y, z, scale]) => (
+        <Bush key={`${x}-${z}`} position={[x, y, z]} scale={scale} />
+      ))}
     </group>
   )
 }
@@ -1471,20 +1793,25 @@ function CentralGlade({ position }) {
 function PracticeLogArea({ openExhibit }) {
   return (
     <group>
-      <mesh position={[7.25, 0.071, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
-        <planeGeometry args={[3.25, 10.4, 4, 1]} />
-        <meshToonMaterial color="#b99558" />
+      <mesh position={[16.9, 0.03, 11.2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[39, 46, 12, 14]} />
+        <meshToonMaterial color="#1f5644" />
       </mesh>
-      <mesh position={[15.8, 0.055, 8.0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[11.4, 17.8, 6, 8]} />
-        <meshToonMaterial color="#235844" />
+      <mesh position={[16.9, 0.052, 10.4]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[12.8, 23.8, 6, 10]} />
+        <meshToonMaterial color="#233f36" />
       </mesh>
-      <mesh position={[15.8, 0.073, 8.0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[10.2, 16.5, 6, 8]} />
-        <meshBasicMaterial color="#193d38" transparent opacity={0.28} depthWrite={false} />
+      <mesh position={[16.9, 0.065, 10.4]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[4.0, 25.0, 2, 12]} />
+        <meshToonMaterial color="#7f755f" />
+      </mesh>
+      <mesh position={[16.9, 0.071, 8.2]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} receiveShadow>
+        <planeGeometry args={[3.2, 10.8, 2, 4]} />
+        <meshToonMaterial color="#776b58" />
       </mesh>
 
-      <PracticePortal position={[9.8, 0, 0]} />
+      <PracticeRealmDetails />
+      <PracticePortal position={PRACTICE_EXIT_PORTAL.position} title="Return" subtitle="back to garden" />
 
       {practiceLogs.map((log) => (
         <Tombstone key={log.id} log={log} openExhibit={openExhibit} />
@@ -1496,13 +1823,17 @@ function PracticeLogArea({ openExhibit }) {
   )
 }
 
-function PracticePortal({ position }) {
+function PracticePortal({ position, title = 'Practice Log', subtitle = 'walk close' }) {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const ringRef = useRef()
   const innerRef = useRef()
   const lightRef = useRef()
 
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime
+  useFrame(() => {
+    if (isPaused) return
+
+    const t = sceneTime.current
     const cycle = getCycleState(t)
     const pulse = 0.82 + Math.sin(t * 2.8) * 0.18
 
@@ -1531,6 +1862,10 @@ function PracticePortal({ position }) {
         <boxGeometry args={[3.55, 0.28, 0.28]} />
         <meshToonMaterial color="#202638" />
       </mesh>
+      <mesh position={[0, 0.08, 0]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
+        <ringGeometry args={[1.05, 1.48, 64]} />
+        <meshBasicMaterial color="#84f6ff" transparent opacity={0.2} depthWrite={false} toneMapped={false} />
+      </mesh>
       <mesh ref={ringRef} position={[0, 1.65, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[1.16, 0.055, 16, 96]} />
         <meshBasicMaterial color="#76f7ff" transparent opacity={0.86} toneMapped={false} />
@@ -1540,12 +1875,129 @@ function PracticePortal({ position }) {
         <meshBasicMaterial ref={innerRef} color="#955dff" transparent opacity={0.25} depthWrite={false} toneMapped={false} />
       </mesh>
       <Text position={[0, 3.24, 0.18]} fontSize={0.29} color="#bdfcff" anchorX="center" outlineWidth={0.018} outlineColor="#7c3aed">
-        Practice Log
+        {title}
       </Text>
       <Text position={[0, 2.83, 0.18]} fontSize={0.105} color="#fff7c2" anchorX="center">
-        walk close to read
+        {subtitle}
       </Text>
       <pointLight ref={lightRef} position={[0, 1.9, 0.6]} color="#8aeaff" intensity={2.4} distance={9.5} decay={2.1} />
+    </group>
+  )
+}
+
+function PracticeRealmDetails() {
+  return (
+    <group>
+      {[
+        [10.7, -0.08, 1.1, 6.5, 2.1, 3.6, '#174637'],
+        [23.0, -0.08, 3.0, 6.8, 2.2, 3.8, '#1b4c3d'],
+        [10.9, -0.1, 19.5, 6.4, 2.0, 3.5, '#173d36'],
+        [22.9, -0.1, 20.8, 6.8, 2.1, 3.5, '#1f5140'],
+      ].map(([x, y, z, sx, sy, sz, color]) => (
+        <Hill key={`${x}-${z}`} position={[x, y, z]} scale={[sx, sy, sz]} color={color} />
+      ))}
+      {[
+        [11.8, 0, 2.2, 0.92],
+        [22.2, 0, 5.4, 0.98],
+        [11.6, 0, 15.6, 0.82],
+        [22.0, 0, 17.7, 0.78],
+      ].map(([x, y, z, scale]) => (
+        <TwistedTree key={`${x}-${z}`} position={[x, y, z]} scale={scale} />
+      ))}
+      {[
+        [13.1, 0.13, 0.4, 0.28],
+        [20.9, 0.13, 0.9, 0.24],
+        [12.4, 0.13, 18.1, 0.22],
+        [21.7, 0.13, 20.8, 0.28],
+        [16.6, 0.13, 22.5, 0.2],
+      ].map(([x, y, z, scale]) => (
+        <mesh key={`${x}-${z}`} position={[x, y, z]} scale={[scale * 1.35, scale * 0.55, scale]} castShadow receiveShadow>
+          <dodecahedronGeometry args={[1, 0]} />
+          <meshToonMaterial color="#67706a" />
+        </mesh>
+      ))}
+      {[
+        [12.4, 0, 3.6, 0.82],
+        [22.1, 0, 8.2, 0.94],
+        [12.4, 0, 16.4, 0.78],
+        [21.6, 0, 20.0, 0.72],
+        [18.8, 0, -0.8, 0.64],
+      ].map(([x, y, z, scale]) => (
+        <Bush key={`${x}-${z}`} position={[x, y, z]} scale={scale} />
+      ))}
+      <LampPost position={[12.35, 0, 0.35]} />
+      <LampPost position={[21.5, 0, 0.95]} />
+      <Campfire position={[10.9, 0, 12.2]} />
+      <Fireflies />
+      <FireflyLightPool />
+      <CemeteryPebbles />
+    </group>
+  )
+}
+
+function CemeteryPebbles() {
+  const ref = useRef()
+  const pebbles = useMemo(
+    () =>
+      Array.from({ length: 180 }, (_, index) => ({
+        position: [
+          11.4 + randomAt(index + 5200) * 11,
+          0.09,
+          0.4 + randomAt(index + 5201) * 22.2,
+        ],
+        scale: [
+          0.045 + randomAt(index + 5202) * 0.13,
+          0.016,
+          0.035 + randomAt(index + 5203) * 0.12,
+        ],
+        rotation: randomAt(index + 5204) * Math.PI,
+        color: randomAt(index + 5205) > 0.5 ? '#8f876e' : '#5f6f63',
+      })),
+    [],
+  )
+
+  useInstancedTransforms(ref, pebbles, ({ position, rotation, scale, color }, dummy, colorTarget) => {
+    dummy.position.set(...position)
+    dummy.rotation.set(0, rotation, 0)
+    dummy.scale.set(...scale)
+    colorTarget.set(color)
+  })
+
+  return (
+    <instancedMesh ref={ref} args={[null, null, pebbles.length]} receiveShadow frustumCulled={false}>
+      <dodecahedronGeometry args={[1, 0]} />
+      <meshBasicMaterial color="#7d7464" />
+    </instancedMesh>
+  )
+}
+
+function TwistedTree({ position, scale = 1 }) {
+  return (
+    <group position={position} scale={scale}>
+      <mesh position={[0, 0.92, 0]} rotation={[0.08, 0, -0.16]} castShadow>
+        <cylinderGeometry args={[0.18, 0.38, 1.85, 7]} />
+        <meshToonMaterial color="#5c4038" />
+      </mesh>
+      {[
+        [-0.42, 1.62, 0, 0.95, -0.85],
+        [0.48, 1.8, 0.12, 0.92, 0.78],
+        [0.02, 2.04, -0.18, 0.76, 0.18],
+      ].map(([x, y, z, length, rot]) => (
+        <mesh key={`${x}-${y}`} position={[x, y, z]} rotation={[0.28, 0, rot]} castShadow>
+          <cylinderGeometry args={[0.055, 0.12, length, 7]} />
+          <meshToonMaterial color="#4a3532" />
+        </mesh>
+      ))}
+      {[
+        [0, 2.44, 0, 1.0, '#12483d'],
+        [-0.62, 2.08, 0.2, 0.68, '#19533f'],
+        [0.66, 2.12, -0.1, 0.72, '#123e38'],
+      ].map(([x, y, z, size, color]) => (
+        <mesh key={`${x}-${y}`} position={[x, y, z]} scale={[size, size * 0.68, size]} castShadow receiveShadow>
+          <sphereGeometry args={[1, 18, 10]} />
+          <meshToonMaterial color={color} />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -1763,17 +2215,18 @@ function BoundaryHedges() {
   const hedges = useMemo(
     () => {
       const items = []
+      const limits = WORLD_LIMITS.garden
 
       for (let index = 0; index < 42; index += 1) {
-        const z = WORLD_LIMITS.minZ + index * ((WORLD_LIMITS.maxZ - WORLD_LIMITS.minZ) / 41)
-        items.push({ position: [WORLD_LIMITS.minX - 0.9 + randomAt(index + 1200) * 0.4, 0.62, z], scale: 0.74 + randomAt(index + 1201) * 0.45 })
-        items.push({ position: [WORLD_LIMITS.maxX + 0.9 - randomAt(index + 1300) * 0.4, 0.62, z], scale: 0.74 + randomAt(index + 1301) * 0.45 })
+        const z = limits.minZ + index * ((limits.maxZ - limits.minZ) / 41)
+        items.push({ position: [limits.minX - 0.9 + randomAt(index + 1200) * 0.4, 0.62, z], scale: 0.74 + randomAt(index + 1201) * 0.45 })
+        items.push({ position: [limits.maxX + 0.9 - randomAt(index + 1300) * 0.4, 0.62, z], scale: 0.74 + randomAt(index + 1301) * 0.45 })
       }
 
       for (let index = 0; index < 34; index += 1) {
-        const x = WORLD_LIMITS.minX + index * ((WORLD_LIMITS.maxX - WORLD_LIMITS.minX) / 33)
-        items.push({ position: [x, 0.62, WORLD_LIMITS.minZ - 0.75 + randomAt(index + 1400) * 0.35], scale: 0.78 + randomAt(index + 1401) * 0.5 })
-        items.push({ position: [x, 0.62, WORLD_LIMITS.maxZ + 0.9 - randomAt(index + 1500) * 0.35], scale: 0.78 + randomAt(index + 1501) * 0.5 })
+        const x = limits.minX + index * ((limits.maxX - limits.minX) / 33)
+        items.push({ position: [x, 0.62, limits.minZ - 0.75 + randomAt(index + 1400) * 0.35], scale: 0.78 + randomAt(index + 1401) * 0.5 })
+        items.push({ position: [x, 0.62, limits.maxZ + 0.9 - randomAt(index + 1500) * 0.35], scale: 0.78 + randomAt(index + 1501) * 0.5 })
       }
 
       return items
@@ -1834,6 +2287,8 @@ function GroundPaint() {
 }
 
 function GrassField() {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const ref = useRef()
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const blades = useMemo(
@@ -1856,10 +2311,11 @@ function GrassField() {
     [],
   )
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!ref.current) return
 
-    const t = clock.elapsedTime
+    const t = sceneTime.current
     blades.forEach((blade, index) => {
       const gust = Math.sin(t * blade.wind + blade.phase) * 0.18 + Math.sin(t * 0.42 + blade.position[0]) * 0.08
       dummy.position.set(...blade.position)
@@ -2031,6 +2487,8 @@ function FloatingMotes() {
 }
 
 function Fireflies() {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const ref = useRef()
   const materialRef = useRef()
   const dummy = useMemo(() => new THREE.Object3D(), [])
@@ -2048,11 +2506,12 @@ function Fireflies() {
     [],
   )
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!ref.current || !materialRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
-    const t = clock.elapsedTime
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
 
     fireflies.forEach((fly, index) => {
       const pulse = 0.72 + Math.sin(t * 5.2 + fly.phase) * 0.28
@@ -2079,6 +2538,8 @@ function Fireflies() {
 }
 
 function FireflyLightPool() {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const lights = useRef([])
   const anchors = useMemo(
     () => [
@@ -2091,9 +2552,11 @@ function FireflyLightPool() {
     [],
   )
 
-  useFrame(({ clock }) => {
-    const cycle = getCycleState(clock.elapsedTime)
-    const t = clock.elapsedTime
+  useFrame(() => {
+    if (isPaused) return
+
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
 
     lights.current.forEach((light, index) => {
       if (!light) return
@@ -2157,30 +2620,6 @@ function useInstancedTransforms(ref, items, applyTransform) {
   }, [applyTransform, items, ref])
 }
 
-function FenceLine({ side }) {
-  return (
-    <group position={[side * 3.38, 0, -0.8]}>
-      {Array.from({ length: 10 }, (_, index) => {
-        const z = -17 + index * 3.8
-        return (
-          <group key={index} position={[0, 0, z]}>
-            <mesh position={[0, 0.38, 0]} castShadow>
-              <boxGeometry args={[0.14, 0.76, 0.14]} />
-              <meshToonMaterial color={palette.darkWood} />
-            </mesh>
-            {index < 9 && (
-              <mesh position={[0, 0.54, 1.9]} rotation={[0, 0, side * 0.04]} castShadow>
-                <boxGeometry args={[0.12, 0.16, 3.42]} />
-                <meshToonMaterial color={palette.wood} />
-              </mesh>
-            )}
-          </group>
-        )
-      })}
-    </group>
-  )
-}
-
 function randomAt(seed) {
   const value = Math.sin(seed * 928.231) * 43758.5453
   return value - Math.floor(value)
@@ -2196,11 +2635,14 @@ function Hill({ color, ...props }) {
 }
 
 function Cloud({ position, scale = 1, color = '#ffe7d2', shadowColor = '#d99a82' }) {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const ref = useRef()
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!ref.current) return
-    ref.current.position.x = position[0] + Math.sin(clock.elapsedTime * 0.035 + position[2]) * 0.32
+    ref.current.position.x = position[0] + Math.sin(sceneTime.current * 0.035 + position[2]) * 0.32
   })
 
   return (
@@ -2359,14 +2801,18 @@ function Bench({ position, rotation }) {
 }
 
 function Campfire({ position }) {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const lightRef = useRef()
   const emberRef = useRef()
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!lightRef.current || !emberRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
-    const flicker = 0.75 + Math.sin(clock.elapsedTime * 12.6) * 0.16 + Math.sin(clock.elapsedTime * 23.2) * 0.08
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
+    const flicker = 0.75 + Math.sin(t * 12.6) * 0.16 + Math.sin(t * 23.2) * 0.08
     lightRef.current.intensity = (1.2 + cycle.nightAmount * 5.2 + cycle.goldenAmount * 1.6) * flicker
     emberRef.current.scale.setScalar(0.86 + flicker * 0.2)
   })
@@ -2405,14 +2851,18 @@ function Campfire({ position }) {
 }
 
 function FireFlame({ position, scale, color }) {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const ref = useRef()
   const materialRef = useRef()
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!ref.current || !materialRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
-    const flicker = 0.88 + Math.sin(clock.elapsedTime * 10.4 + position[0] * 8) * 0.12
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
+    const flicker = 0.88 + Math.sin(t * 10.4 + position[0] * 8) * 0.12
     ref.current.scale.set(scale * flicker, scale * 1.75 * flicker, scale * flicker)
     materialRef.current.opacity = 0.68 + cycle.nightAmount * 0.22
   })
@@ -2511,15 +2961,19 @@ function Mailbox({ position, rotation }) {
 }
 
 function LampPost({ position }) {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const lightRef = useRef()
   const bulbRef = useRef()
   const glowRef = useRef()
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!lightRef.current || !bulbRef.current || !glowRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
-    const flicker = 0.92 + Math.sin(clock.elapsedTime * 7.4 + position[0]) * 0.05
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
+    const flicker = 0.92 + Math.sin(t * 7.4 + position[0]) * 0.05
     const glow = cycle.lampAmount * flicker
     lightRef.current.intensity = 0.22 + glow * 2.25
     bulbRef.current.opacity = 0.48 + glow * 0.52
@@ -2587,13 +3041,17 @@ function LightArchways() {
 }
 
 function LightArch({ z, offset }) {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const lightRef = useRef()
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!lightRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
-    lightRef.current.intensity = cycle.lampAmount * (0.8 + Math.sin(clock.elapsedTime * 3.8 + offset) * 0.06)
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
+    lightRef.current.intensity = cycle.lampAmount * (0.8 + Math.sin(t * 3.8 + offset) * 0.06)
   })
 
   return (
@@ -2624,14 +3082,18 @@ function LightArch({ z, offset }) {
 }
 
 function StringLightBulb({ color, offset }) {
+  const isPaused = useWorldPaused()
+  const sceneTime = useSceneTime()
   const materialRef = useRef()
   const glowRef = useRef()
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
+    if (isPaused) return
     if (!materialRef.current || !glowRef.current) return
 
-    const cycle = getCycleState(clock.elapsedTime)
-    const pulse = 0.9 + Math.sin(clock.elapsedTime * 4.4 + offset) * 0.1
+    const t = sceneTime.current
+    const cycle = getCycleState(t)
+    const pulse = 0.9 + Math.sin(t * 4.4 + offset) * 0.1
     materialRef.current.opacity = 0.38 + cycle.lampAmount * 0.58 * pulse
     glowRef.current.opacity = cycle.lampAmount * 0.08 * pulse
   })
@@ -2669,29 +3131,100 @@ function DirectionBoard({ position, rotation }) {
         choose a path
       </Text>
       <Text position={[-1.05, 1.62, 0.12]} fontSize={0.105} color="#fff4d5" anchorX="center">
-        music
+        CV stands
       </Text>
       <Text position={[1.05, 1.62, 0.12]} fontSize={0.105} color="#fff4d5" anchorX="center">
-        builds
+        practice
       </Text>
     </group>
   )
 }
 
 function PaperTrail() {
+  const papers = [
+    [-2.9, 0.126, -4.2, 0.15, '/photos/profile-neon.jpeg', 'late shift photo'],
+    [2.75, 0.126, -8.8, -0.22, '/photos/profile-mask.jpeg', 'travel photo'],
+    [-2.6, 0.126, 4.9, -0.05, '/photos/profile-couch.jpeg', 'home photo'],
+    [2.9, 0.126, 13.6, 0.19, null, 'future print'],
+  ]
+
   return (
     <group>
-      {[
-        [-2.9, 0.12, -4.2, 0.15],
-        [2.75, 0.12, -8.8, -0.22],
-        [-2.6, 0.12, 4.9, -0.05],
-        [2.9, 0.12, 13.6, 0.19],
-      ].map(([x, y, z, rot]) => (
-        <mesh key={`${x}-${z}`} position={[x, y, z]} rotation={[-Math.PI / 2, 0, rot]}>
-          <planeGeometry args={[0.54, 0.38]} />
-          <meshToonMaterial color="#fff7df" />
-        </mesh>
+      {papers.map(([x, y, z, rot, url, label]) => (
+        <PhotoPaper key={`${x}-${z}`} position={[x, y, z]} rotation={rot} url={url} label={label} />
       ))}
+    </group>
+  )
+}
+
+function PhotoPaper({ position, rotation, url, label }) {
+  if (url) {
+    return <LoadedPhotoPaper position={position} rotation={rotation} url={url} label={label} />
+  }
+
+  return <BlankPhotoPaper position={position} rotation={rotation} label={label} />
+}
+
+function LoadedPhotoPaper({ position, rotation, url, label }) {
+  const texture = useLoader(THREE.TextureLoader, url)
+
+  useEffect(() => {
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = 8
+    texture.needsUpdate = true
+  }, [texture])
+
+  return (
+    <group position={position} rotation={[-Math.PI / 2, 0, rotation]}>
+      <mesh position={[0.018, -0.018, -0.006]}>
+        <planeGeometry args={[0.68, 0.98]} />
+        <meshBasicMaterial color="#152333" transparent opacity={0.22} depthWrite={false} />
+      </mesh>
+      <mesh>
+        <planeGeometry args={[0.72, 1.02]} />
+        <meshToonMaterial color="#fff4da" />
+      </mesh>
+      <mesh position={[0, 0, 0.012]}>
+        <planeGeometry args={[0.58, 0.84]} />
+        <meshBasicMaterial map={texture} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, -0.47, 0.016]}>
+        <planeGeometry args={[0.58, 0.06]} />
+        <meshBasicMaterial color="#d4b06d" transparent opacity={0.7} depthWrite={false} />
+      </mesh>
+      <Text
+        position={[0, -0.47, 0.021]}
+        rotation={[0, 0, 0]}
+        fontSize={0.033}
+        color="#26364d"
+        anchorX="center"
+        anchorY="middle"
+        maxWidth={0.52}
+      >
+        {label}
+      </Text>
+    </group>
+  )
+}
+
+function BlankPhotoPaper({ position, rotation, label }) {
+  return (
+    <group position={position} rotation={[-Math.PI / 2, 0, rotation]}>
+      <mesh position={[0.018, -0.018, -0.006]}>
+        <planeGeometry args={[0.68, 0.98]} />
+        <meshBasicMaterial color="#152333" transparent opacity={0.22} depthWrite={false} />
+      </mesh>
+      <mesh>
+        <planeGeometry args={[0.72, 1.02]} />
+        <meshToonMaterial color="#fff4da" />
+      </mesh>
+      <mesh position={[0, 0, 0.012]}>
+        <planeGeometry args={[0.58, 0.84]} />
+        <meshBasicMaterial color="#e9dcc2" />
+      </mesh>
+      <Text position={[0, 0, 0.021]} fontSize={0.045} color="#7c6c56" anchorX="center" anchorY="middle" maxWidth={0.48} textAlign="center">
+        {label}
+      </Text>
     </group>
   )
 }
@@ -3044,7 +3577,7 @@ function ProjectPanel({ item, close }) {
       )}
 
       <div className="panel-section">
-        <h3>{isPractice ? 'What happened' : 'What to add'}</h3>
+        <h3>{isPractice ? 'What happened' : item.sectionTitle || 'Details'}</h3>
         <ul>
           {item.todo.map((task) => (
             <li key={task}>{task}</li>
@@ -3060,7 +3593,7 @@ function ProjectPanel({ item, close }) {
 
       <div className="media-placeholder" style={{ '--accent': item.accent }}>
         <Box size={24} />
-        <span>{isPractice ? 'future slot for photos, files, or mentor notes' : 'future slot for photos, video, audio, links, or a 3D object'}</span>
+        <span>{isPractice ? 'future slot for photos, files, or mentor notes' : item.mediaNote || 'future slot for photos, video, audio, links, or a 3D object'}</span>
       </div>
     </section>
   )
